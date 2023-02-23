@@ -26,7 +26,7 @@ public class CostAnalysis extends Main{
     public int compute(RPLc args) throws Exception {
         PrintWriter writer = null;
         try {
-            File file = new File("Synch_Schema.txt");
+            File file = new File("Cost-Analysis/Synch_Schema.txt");
             writer = new PrintWriter(file);
             System.setProperty("line.separator", System.lineSeparator());
             //System.out.println("Computation of Cost is started:");
@@ -132,7 +132,7 @@ public class CostAnalysis extends Main{
     }
 
 public void store_cost(Map<String,Quartet<Map<String,Set<String>>, Map<Set<String>,String>, String, String>> cost) throws FileNotFoundException {
-    File file = new File("CostEquations.txt");
+    File file = new File("Cost-Analysis/CostEquations.txt");
     PrintWriter writer = new PrintWriter(file);
     Iterator<String> method_name_itr = cost.keySet().iterator();
     while (method_name_itr.hasNext()) {
@@ -204,7 +204,7 @@ public void store_cost(Map<String,Quartet<Map<String,Set<String>>, Map<Set<Strin
 }
 
     public Map<String, Set<Set<String>>> scan_merge_schema() throws FileNotFoundException {
-        Scanner scanner = new Scanner(new File("Synch_Schema.txt"));
+        Scanner scanner = new Scanner(new File("Cost-Analysis/Synch_Schema.txt"));
         String method_name = null;
         String objs = null;
         Map<String, Set<Set<String>>> sync_schema_map = new HashMap<String, Set<Set<String>>>();

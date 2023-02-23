@@ -125,7 +125,7 @@ public class PrettyPrinterBackEnd extends Main {
         RplToABSFormatter formatter = new DefaultABSFormatter(writer);
         model.doPrettyPrint(writer, formatter);*/
 
-        File file = new File("RABS.abs");
+        File file = new File("Rpl-to-ABS/RABS.abs");
         PrintWriter writer = new PrintWriter(file);
         writer.print("module ABS.ResourceManager;");
         writer.println();

@@ -14,8 +14,6 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
       read file
       start=`echo $(($(gdate +%s%N)/1000000))`
       frontend/bin/absc -s ./examples/$file
-      abstools/frontend/bin/absc --erlang RABS.abs
-      gen/erl/run
       end=`echo $(($(gdate +%s%N)/1000000))`
       echo Execution time was `expr $end - $start` mili seconds.
     }
@@ -29,7 +27,7 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
       frontend/bin/absc -c ./examples/$file
       end=`echo $(($(gdate +%s%N)/1000000))`
       echo Execution time was `expr $end - $start` mili seconds.
-      grep -o '\bmax\b' CostEquations.txt | wc -l
+      grep -o '\bmax\b' Cost-Analysis/CostEquations.txt | wc -l
     }
     # shellcheck disable=SC1131
     else
@@ -47,8 +45,6 @@ else
       read file
       start=`echo $(date +%s)`
       frontend/bin/absc -s ./examples/$file
-      abstools/frontend/bin/absc --erlang RABS.abs
-      gen/erl/run
       end=`echo $($(date +%s))`
       echo Execution time was `expr $end - $start` seconds.
     }
@@ -62,7 +58,7 @@ else
       frontend/bin/absc -c ./examples/$file
       end=`echo $(gdate +%s)`
       echo Execution time was `expr $end - $start` mili seconds.
-      grep -o '\bmax\b' CostEquations.txt | wc -l
+      grep -o '\bmax\b' Cost-Analysis/CostEquations.txt | wc -l
     }
     else
     {

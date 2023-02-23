@@ -29,7 +29,6 @@ To compile the RplTools, make sure to run the command `./gradlew` build from a d
 
 On Linux, check if your distribution offers the necessary programs pre-packaged in the version needed (JDK11, Erlang >= 23, a C compiler); otherwise download from the distribution pages linked above.
 
-## Installing the RplTools and ABS compiler from source
 ### Installing the RplTools from source
 
 To install the `RplTools`, clone the git repository and run gradle (after installing the necessary dependencies):
@@ -40,24 +39,17 @@ To install the `RplTools`, clone the git repository and run gradle (after instal
 
 `./gradlew assemble`
 
-### Installing the ABS compiler from source
-After installing the `RplTool`, install the ABS compiler in the `Rpl-Tools` directory using the following commands:
 
-`git clone https://github.com/abstools/abstools.git`
-
-`cd abstools`
-
-`./gradlew assemble`
-
-## Compiling the Rpl source file
+### Compiling the Rpl source file
 
 The directory `Rpl-Tools/examples` has some examples. For simplicity, please put your source file (`*.rpl`) in the same directory (`Rpl-Tools/examples`). 
 
-Afterwards, move back to `Rpl-Tools` directory and use the following command to run Rpl-Tools.
+Afterwards, move back to `Rpl-Tools` directory and use the following command to run RplTools.
 
 `make`
 
-### Note:
+After choosing the option, `1` for simulation and `2` for the static cost analysis, provide the name of source file (`*.rpl`) stored in the directory `Rpl-Tools/examples`. The translation of an `Rpl` program into corresponding `ABS` program can be found in `Rpl-to-ABS/RABS.abs`.
+The result of static cost analysis (cost equations) can be found in the file `Cost-Analysis/CostEquations.txt`
 
-After choosing the option, `1` for simulation and `2` for the static cost analysis, provide the name of source file (`*.rpl`) stored in the directory `Rpl-Tools/examples`. The translation of an `Rpl` program into corresponding `ABS` program can be seen in the file `RABS.abs`.
-The result of static cost analysis (cost equations) can be found in the file `CostEquations.txt`
+### Note:
+The translated ABS file (`RABS.abs`) can be executed using the [ABS Compiler](https://abs-models.org/getting_started/local-install/).
