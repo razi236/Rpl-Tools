@@ -1,0 +1,60 @@
+module MapReduce;
+interface IWorker {
+    Int map (Int a);
+    Int red (Int a);
+}
+
+class Worker implements IWorker {
+
+    Int map (Int workTime) {
+   	 	cost(workTime);
+    	return 0;
+    }
+
+    Int red (Int workTime) {
+   	 	cost(workTime);
+    	return 0;
+    }
+
+}
+{
+    Int mt1 = random(10);
+    Int mt2 = random(10);
+    Int rt1 = random(10);
+    Int rt2 = random(10);
+    Int k1 = random(10);
+    Int k2 = random(10);
+    IWorker w1 = new Worker();
+    IWorker w2 = new Worker();
+    //IWorker w3 = new Worker();
+    //IWorker w4 = new Worker();
+    Fut<Int> f11;
+    Fut<Int> f12;
+    Fut<Int> f13;
+    Fut<Int> f14;
+    Fut<Int> f21;
+    Fut<Int> f22;
+    Fut<Int> f23;
+    Fut<Int> f24;
+    f11 = !map(w1,mt1) after dl 10;
+    f12 = !map(w2,mt2) after dl 10;
+    //f13 = !map(w3,mt1) after dl 10;
+    //f14 = !map(w4,mt2) after dl 10;
+    await f11?;
+    await f12?;
+    //await f13?;
+    //await f14?;
+    cost(k1);
+    f21 = !red(w1,rt1) after dl 10;
+    f22 = !red(w2,rt2) after dl 10;
+    //f23 = !red(w3,rt1) after dl 10;
+    //f24 = !red(w4,rt2) after dl 10;
+    await f21?;
+    await f22?;
+    //await f23?;
+    //await f24?;
+    cost(k2);
+}
+
+
+

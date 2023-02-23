@@ -1,0 +1,13 @@
+#!/bin/bash
+
+# NOTE: compile with `absc java --debuginfo ...` for this to work
+
+PROGNAME="$(readlink $0)"
+if [[ -z $PROGNAME ]] ; then
+    PROGNAME="$0"
+fi
+BASEDIR="$(dirname $PROGNAME)/../.."
+
+java -cp $BASEDIR/bin:$1 -Dabs.debug=true -Dabs.loglevel=finest -Dabs.systemobserver=GraphicalDebugger,UMLSequenceChart -Dabs.totalscheduler=InteractiveScheduler $2.Main
+
+

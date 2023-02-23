@@ -1,0 +1,275 @@
+plugins {
+    // Apply the java plugin to add support for Java
+    id 'java'
+    // Apply the application plugin to add support for building an application
+    id 'application'
+
+    id 'antlr'
+    id "com.github.spotbugs" version "5.0.7"
+    id 'com.github.johnrengelman.shadow'
+}
+
+configurations {
+    jastadd2 {
+        extendsFrom implementation
+    }
+}
+
+application {
+    mainClass = 'org.rpl.frontend.parser.Main'
+}
+
+java {
+    withJavadocJar()
+    withSourcesJar()
+
+}
+
+compileJava.options.encoding = 'UTF-8'
+
+distributions {
+    main { distributionBaseName = 'absc' }
+}
+
+dependencies {
+    // https://docs.gradle.org/current/userguide/java_plugin.html#sec:java_plugin_and_dependency_management
+    implementation 'commons-io:commons-io:2.11.0'
+    implementation 'com.google.guava:guava:31.1-jre'
+    implementation files('lib/choco-solver-2.1.1.jar')
+    implementation 'org.eclipse.jdt:ecj:3.29.0'
+    implementation 'org.apfloat:apfloat:1.10.1'
+    // our code fails to compile with newer versions of sat4j; leaving this at
+    // version 2.3.0 for now.
+    implementation 'org.sat4j:org.sat4j.core:2.3.0'
+    implementation 'org.sat4j:org.sat4j.pb:2.3.0'
+    implementation 'org.sat4j:org.sat4j.maxsat:2.3.0'
+    implementation files('lib/semisolver.jar')
+    implementation 'org.javatuples:javatuples:1.2'
+
+    implementation 'info.picocli:picocli:4.6.3'
+
+    compileOnly 'com.google.code.findbugs:jsr305:3.0.2'
+
+    // Executes JUnit Jupiter (~JUnit 5) tests
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.8.2")
+    // Executes JUnit4 tests
+    testRuntimeOnly("org.junit.vintage:junit-vintage-engine:5.8.2")
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.8.2'
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'com.eclipsesource.minimal-json:minimal-json:0.9.5'
+    testImplementation 'org.hamcrest:hamcrest-core:2.2'
+
+
+    jastadd2 'org.jastadd:jastadd:2.3.5'
+    antlr 'org.antlr:antlr4:4.10.1'
+    // https://mvnrepository.com/artifact/org.xerial/sqlite-jdbc
+    implementation group: 'org.xerial', name: 'sqlite-jdbc', version: '3.39.3.0'
+
+}
+
+// JastAdd
+task generateJastAddAST(type: JavaExec) {
+    // The JastAdd plugin version <= 1.13.3 does not work with gradle > 6.3,
+    // so we use a JavaExec task directly.
+    description 'Processes the JastAdd AST.'
+    classpath = project.configurations.jastadd2
+    mainClass = 'org.jastadd.JastAdd'
+    doFirst {
+        // Avoid left-over Java files when modifying the AST.  Re-running
+        // JastAdd regenerates all files, so deleting everything beforehand
+        // doesn’t hurt.
+        delete "$buildDir/generated-src/jastadd/main/**";
+    }
+    inputs.files fileTree(dir: 'src/main/java',
+                          includes: ['**/*.ast', '**/*.jrag', '**/*.jadd']).files
+    outputs.dir "$buildDir/generated-src/jastadd/main" // this creates the directory if necessary
+    args += "--o=$buildDir/generated-src/jastadd/main"
+    args += '--rewrite=regular'
+    args += '--visitCheck=false'
+    args += '--package=org.rpl.frontend.ast'
+    args += fileTree(dir: 'src/main/java',
+                     includes: ['**/*.ast', '**/*.jrag', '**/*.jadd']).files
+}
+sourceSets.main.java.srcDir "$buildDir/generated-src/jastadd/main"
+compileJava.dependsOn 'generateJastAddAST'
+compileJava.options.encoding = 'UTF-8'
+sourcesJar.dependsOn 'generateJastAddAST'
+
+// antlr
+generateGrammarSource {
+    arguments += [ '-package', 'org.rpl.frontend.antlr.parser' ]
+}
+compileJava.dependsOn 'generateGrammarSource'
+sourcesJar.dependsOn 'generateGrammarSource'
+
+// erlang
+
+// There's an erlang plugin at "id 'org.ccrusius.erlang' version
+// '2.0.8'" but it re-downloads and compiles rebar after each "gradle
+// clean", and we need to have an executable rebar in the source tree
+// anyway since it is needed in the compiler itself, so we use a
+// simple Exec task instead.
+
+// task compileErlangBackend(type: org.ccrusius.erlang.tasks.Rebar) {
+//     setRebarVersion '2.6.0'
+//     setRebarTarget 'compile'
+//     setDirectory 'src/main/resources/erlang/absmodel'
+//     outputs.file('src/main/resources/erlang/absmodel/ebin/cog.beam')
+// }
+
+import org.apache.tools.ant.taskdefs.condition.Os
+task checkErlang() {
+    doLast {
+        def minVersion = "23"
+        // String quoting across shells and operating systems is woolly and
+        // wonderful; this is the best we could come up with
+        def command = ['erl', '-noshell', '-eval', 'io:fwrite("~s~n", [erlang:system_info(otp_release)]).', '-s', 'erlang', 'halt']
+        if (Os.isFamily(Os.FAMILY_WINDOWS)) {
+            command = 'erl -noshell -eval "io:fwrite(erlang:system_info(otp_release))." -s erlang halt'
+        }
+        // def command = 'erl -noshell -eval \'io:fwrite("~s~n", [erlang:system_info(otp_release)]).\' -s erlang halt'
+        def out = "", serr = new StringBuilder()
+        def success = 0
+        try {
+            def result = command.execute()
+            result.consumeProcessErrorStream(serr)
+            out = result.text
+            result.waitFor()
+            success = result.exitValue()
+        } catch (IOException e) {
+            throw new GradleException("*** Could not find erlang executable in path - please install erlang version ${minVersion} or later")
+        }
+        if (success != 0) {
+            throw new GradleException("*** Could not determine erlang version - please install erlang version ${minVersion} or later")
+        }
+        def currVersion = out.trim()
+        if (currVersion < minVersion) {
+            throw new GradleException("*** We need at least erlang version ${minVersion}, installed erlang version is ${currVersion}.")
+        }
+    }
+}
+
+task compileErlangBackend(type: Exec, dependsOn: processResources) {
+    description 'Compiles Erlang backend support files.'
+    workingDir 'build/resources/main/erlang/absmodel'
+    commandLine 'escript', '../bin/rebar3', 'compile'
+}
+compileErlangBackend.dependsOn 'checkErlang'
+clean {
+    // This removes beam files left over after updating from old versions
+    // (e.g. v1.8.1), when we precompiled the erlang backend in `src/` instead
+    // of in `build/`.
+    delete fileTree('src/main/resources/erlang') {
+        include '**/*.beam'
+        include '**/.rebar/'
+    }
+}
+jar.dependsOn 'compileErlangBackend'
+processTestResources.dependsOn 'compileErlangBackend'
+
+tasks.withType(AbstractArchiveTask) {
+    // Try to create reproducible builds
+    preserveFileTimestamps = false
+    reproducibleFileOrder = true
+}
+
+// jar
+jar {
+    // https://docs.gradle.org/current/dsl/org.gradle.api.tasks.bundling.Jar.html
+    archiveBaseName='absfrontend'
+    archiveAppendix=gitBranch()
+    duplicatesStrategy='exclude'
+    manifest {
+        attributes 'Main-Class': 'org.rpl.Absc',
+            'Implementation-Title': 'ABS Frontend',
+            //'Implementation-Version': project.version.tokenize('-').first(),
+            'Bundle-Version': project.version,
+            // This is wrong, but we use it anyway for the detailed
+            // version string (java.lang.Package only has methods
+            // getVersion and getSpecificationVersion)
+            'Specification-Version': project.version
+    }
+
+}
+
+shadowJar {
+    
+}
+
+// this is necessary for the `absc` scripts
+task plainJar(type: Copy, dependsOn: shadowJar) {
+    description 'Copies the combined jar into its documented location.'
+    from shadowJar.archiveFile
+    into 'dist'
+    rename '(.*).jar', 'absfrontend.jar'
+}
+clean {
+    delete 'dist/'
+}
+assemble.dependsOn plainJar
+
+// `absc` script et al. -- copy to well-known location and instruct
+// users to set their $PATH (see e.g. `frontend/README.md`,
+// https://abstools.github.io/getting_started/local-install/)
+task copyScripts(type: Copy) {
+    description 'Copies absc scripts into their documented locations.'
+    from 'src/main/resources/scripts'
+    into 'bin/'
+}
+clean {
+    delete 'bin/'
+}
+assemble.dependsOn copyScripts
+
+task generateAutocomplete(type: JavaExec) {
+    mainClass = 'picocli.AutoComplete'
+    classpath = sourceSets.main.runtimeClasspath
+    args = [ '--force', '--completionScript', 'bin/bash/absc_completion.sh', 'org.rpl.Absc' ]
+}
+assemble.dependsOn generateAutocomplete
+
+// test
+test {
+    // https://docs.gradle.org/current/dsl/org.gradle.api.tasks.testing.Test.html
+    useJUnitPlatform()
+    maxParallelForks=project.gradle.startParameter.maxWorkerCount
+    testLogging.showStandardStreams = true
+
+    // Allow dynamic exclusion of tests (based on https://blog.jdriven.com/2017/10/run-one-or-exclude-one-test-with-gradle/)
+    // Usage: gradle test -PexcludeTests='**/ErlangModelApiTests*,**/ErlangExamplesTests*'
+    if (project.hasProperty('excludeTests')) {
+        project.property('excludeTests').split(',').each { 
+            exclude it
+        }
+    }
+}
+// See JavaBackendTest.runJava
+test.dependsOn plainJar
+
+spotbugs {
+    // https://github.com/spotbugs/spotbugs-gradle-plugin
+    ignoreFailures = true
+    showProgress = true
+    excludeFilter = file('config/findbugs/findbugs-jastadd-filter.xml')
+}
+
+spotbugsMain {
+    reports {
+        xml.enabled = false
+        html.enabled = true
+    }
+}
+spotbugsTest {
+    reports {
+        xml.enabled = false
+        html.enabled = true
+    }
+}
+
+javadoc {
+    options.encoding = 'UTF-8'
+    failOnError = false
+    options.addStringOption('Xdoclint:none', '-quiet')
+    options.tags = [ 'apilevel', 'declaredat', 'aspect', 'ast', 'attribute',
+                    'argument', 'astdecl', 'production' ]
+}

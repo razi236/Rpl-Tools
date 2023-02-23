@@ -1,0 +1,14 @@
+<FindBugsFilter>
+  <Match>
+    <!-- We use System.exit to communicate success / failure to the shell -->
+    <Bug pattern="DM_EXIT" />
+  </Match>
+  <Match>
+    <!-- this package is generated code; don't complain about it -->
+    <Package name="org.rpl.frontend.ast" />
+  </Match>
+  <Match>
+    <!-- this package is generated code; don't complain about it -->
+    <Package name="org.rpl.frontend.antlr.parser" />
+  </Match>
+</FindBugsFilter>

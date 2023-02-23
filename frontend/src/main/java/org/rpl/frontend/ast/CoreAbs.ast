@@ -1,0 +1,292 @@
+// CoreABS.
+//
+// This file contains the AST definitions necessary to implement roughly
+// Chapters 1--11 (Core ABS) of the manual.  Chapters 12--15 (Model API,
+// Real-Time ABS, custom schedulers) do not add changes to the AST since they
+// are implemented in terms of annotations.  Chapter 16 (Software Product Line
+// Engineering) is contained in the file FullAbs.ast in this directory.
+
+// needed for lists of strings
+Name ::= <Name>;
+
+abstract CoreModel ::= CompilationUnit* ;
+//Model ::= CompilationUnit* ;
+
+
+abstract CoreCompilationUnit ::= <Name> ModuleDecl* ;
+
+ModuleDecl ::= <Name> Export* Import* Decl* [Block:MainBlock];
+
+abstract Import;
+NamedImport : Import ::= Name* ;
+StarImport : Import ::= <ModuleName>;
+FromImport : Import ::= Name* <ModuleName>;
+
+abstract Export;
+NamedExport: Export ::= Name* ;
+StarExport: Export ::= [ModuleName:Name];
+FromExport: Export ::= Name* <ModuleName>;
+// (see below for Blocks)
+
+/***************************************/
+abstract Decl ::= <Name>;
+abstract BehaviorDecl: Decl ::= ; // Entities used in behavior expressions
+abstract TypeDecl: Decl; // Entities used in type expressions
+
+TraitDecl : Decl ::= Annotation* TraitExpr;
+
+abstract TraitExpr;
+TraitSetExpr : TraitExpr ::= MethodImpl*;
+TraitNameExpr : TraitExpr ::= <Name>;
+TraitModifyExpr : TraitExpr ::= TraitExpr MethodModifier;
+
+
+TraitUse ::= TraitExpr;
+/***************************************/
+
+PartialFunctionDef ::= PureExp ;
+PartialFunctionDecl : Decl ::= Annotation* TypeUse Param:ParamDecl* FuncParam:FunctionParamDecl* PartialFunctionDef ;
+ParametricPartialFunctionDecl : PartialFunctionDecl ::= Annotation* TypeParameter:TypeParameterDecl* TypeUse Param:ParamDecl* FuncParam:FunctionParamDecl* PartialFunctionDef ;
+
+UnknownDecl: Decl; // Unknown declarations
+AmbiguousDecl: UnknownDecl ::= <Alternative:java.util.List<Decl>>;
+ClassDecl: BehaviorDecl ::= Annotation* Param:ParamDecl* ImplementedInterfaceUse:InterfaceTypeUse* TraitUse* [InitBlock] RecoverBranch:CaseBranchStmt* Field:FieldDecl* Method:MethodImpl*;
+ClassDecl1: BehaviorDecl ::= Annotation* Param:ParamDecl* ImplementedInterfaceUse:InterfaceTypeUse* TraitUse* [InitBlock] RecoverBranch:CaseBranchStmt* Field:FieldDecl* Method:MethodImpl1*;
+
+FunctionDecl: BehaviorDecl ::= Annotation* TypeUse Param:ParamDecl* FunctionDef ;
+DataConstructor : Decl ::= <Name> ConstructorArg:ConstructorArg* ;
+ExceptionConstructor : DataConstructor ;
+ParametricFunctionDecl : FunctionDecl ::= Annotation* TypeParameter:TypeParameterDecl* ;
+InterfaceDecl: TypeDecl ::= Annotation* ExtendedInterfaceUse:InterfaceTypeUse* Body:MethodSig*;
+InterfaceDecl1: TypeDecl ::= Annotation* ExtendedInterfaceUse:InterfaceTypeUse* Body:MethodSig1*;
+DataTypeDecl: TypeDecl ::= Annotation* DataConstructor* ;
+
+ExceptionDecl : DataTypeDecl ;
+TypeParameterDecl : TypeDecl ::= <Name>; // local declaration
+ParametricDataTypeDecl : DataTypeDecl ::= Annotation* TypeParameter:TypeParameterDecl* ;
+TypeSynDecl: TypeDecl ::= Annotation* Value:TypeUse ;
+
+ConstructorArg ::= TypeUse [SelectorName:Name];
+
+
+abstract Modifier;
+abstract MethodModifier : Modifier;
+AddMethodModifier : MethodModifier ::= TraitExpr;
+ModifyMethodModifier : MethodModifier ::= TraitExpr;
+RemoveMethodModifier : MethodModifier ::= MethodSig*;
+AddFieldModifier : Modifier ::= FieldDecl;
+RemoveFieldModifier : Modifier ::= FieldDecl;
+AddMethodSigModifier : MethodSigModifier ::= MethodSig;
+RemoveMethodSigModifier : MethodSigModifier ::= MethodSig;
+
+abstract VarOrFieldDecl ::= <Name>;
+FunctionParamDecl : VarOrFieldDecl ;
+abstract TypedVarOrFieldDecl : VarOrFieldDecl ::= TypeUse ;
+VarDecl: TypedVarOrFieldDecl ::= [InitExp:Exp];
+FieldDecl: TypedVarOrFieldDecl ::= [InitExp:PureExp] ;
+ParamDecl: TypedVarOrFieldDecl ::= Annotation*;
+ClassParamDecl: ParamDecl;
+PatternVarDecl: VarOrFieldDecl;
+LoopVarDecl: VarOrFieldDecl;    // for ForeachStmt
+
+abstract FunctionDef;
+BuiltinFunctionDef: FunctionDef ::= Argument:PureExp* ;
+ExpFunctionDef: FunctionDef ::= Rhs:PureExp;
+
+// Methods can (syntactically) carry annotations, but these are attached to
+// the ReturnType in the AST.  Semantically, annotations in that place "apply"
+// to both the method as a whole and to its return type.  E.g., for
+//     [Far, HTTPCallable] O m();
+// `m` is `HTTPCallable` and `O` is `Far`, since these annotations apply to a
+// method and a type, respectively.
+MethodSig ::= <Name> ReturnType:TypeUse Param:ParamDecl*;
+MethodSig1 ::= <Name> ReturnType:TypeUse Obj:ParamDecl* Param:ParamDecl*;
+MethodImpl ::= MethodSig Block ;
+MethodImpl1 ::= MethodSig1 Block ;
+
+
+// Type expressions
+abstract TypeIdUse ::= <Name>; // a bare type name (only used for annotation naming)
+abstract TypeUse: TypeIdUse ::= Annotation*;
+InterfaceTypeUse: TypeUse;
+DataTypeUse: TypeUse;
+ParametricDataTypeUse: DataTypeUse ::= Param:TypeUse* ;
+ExceptionTypeUse: DataTypeUse;
+TypeParameterUse: TypeUse;
+// A type expression whose class cannot be resolved at parse time.  Will be
+// resolved by rewriting.
+UnresolvedTypeUse: TypeUse;
+
+/*
+Constructors occur as
+- DataConstructors as in data declarations Co(_D_)
+- term consctructors as in Co(_t_)
+- patterns as in Co(_p_)
+- Don't know yet how to organise these.
+*/
+
+Annotation ::= Value:PureExp;
+TypedAnnotation : Annotation ::= TypeIdUse;
+
+abstract Stmt ::= Annotation* ;
+
+AssignStmt: Stmt ::= Var:VarOrFieldUse Value:Exp;
+AwaitStmt: Stmt ::= Guard;
+SkipStmt: Stmt;
+AddResStmt: Stmt ::= Param:PureExp*;
+ReleaseResStmt: Stmt ::= Res:PureExp;
+SuspendStmt: Stmt;
+DurationStmt: Stmt ::= Min:PureExp Max:PureExp;
+CostStmt: Stmt ::= Min:PureExp;
+MoveCogToStmt: Stmt ::= Target:PureExp;
+ReturnStmt: Stmt ::= RetExp:Exp;
+ExpressionStmt: Stmt ::= Exp:Exp;
+AssertStmt: Stmt ::= Condition:PureExp;
+VarDeclStmt: Stmt ::= VarDecl:VarDecl;
+
+IfStmt: Stmt ::= Condition:PureExp Then:Block [Else:Block];
+WhileStmt: Stmt ::= Condition:PureExp Body:Block;
+ForeachStmt: Stmt ::= ValueVar:LoopVarDecl [IndexVar:LoopVarDecl] ListExp:PureExp Body:Block;
+CaseStmt : Stmt ::= Expr:PureExp Branch:CaseBranchStmt* ;
+CaseStmtOld : CaseStmt ;     // old-style syntax, used for deprecation warning
+CaseBranchStmt ::= Left:Pattern Right:Block ;
+TryCatchFinallyStmt : Stmt ::= Body:Block Catch:CaseBranchStmt* [Finally:Block] ;
+// A Block is the body of programs and methods and is also used for initblocks
+// It contains a list of zero or more ast.VarOrFieldDecl
+// and zero or more ast.Stmt, these are named Fields and Stmts resp.
+Block: Stmt ::= Stmt:Stmt*;
+InitBlock: Block; // Initializer block in a class - can be handled specially during code generation
+MainBlock: Block; // Active behavior of the model
+
+ThrowStmt: Stmt ::= Reason:PureExp;
+DieStmt: Stmt ::= Reason:PureExp;
+
+// Virtual AST nodes used in control flow analysis
+CFGEntry : SkipStmt;
+CFGExit : SkipStmt;
+VirtualStmt: SkipStmt;
+
+abstract Guard;
+ClaimGuard: Guard ::= Var:PureExp;
+AndGuard: Guard ::= Left:Guard Right:Guard;
+//For boolean guards
+ExpGuard: Guard ::= PureExp ;
+// For time-delay guards (used in Maude timed simulation, otherwise always true)
+DurationGuard: Guard ::= Min:PureExp Max:PureExp;
+
+
+// Expressions
+abstract Exp;
+// Pure expressions
+abstract PureExp: Exp;
+// Expressions with side effect.
+abstract EffExp: Exp;
+
+// Side effect free expressions
+NullExp: PureExp;
+ThisExp: PureExp;
+DestinyExp: PureExp;
+// plus *Use-s
+
+abstract LiteralExp: PureExp;
+// For now the literal just contain a variable Content of type String.
+StringLiteral: LiteralExp ::= <Content> ;
+IntLiteral: LiteralExp ::= <Content>;
+FloatLiteral: LiteralExp ::= <Content>;
+// We have to treat lists specially since various parts of the toolchain crash
+// when recursing through 10000-deep DataConstructorExps
+ListLiteral: LiteralExp ::= PureExp*;
+
+abstract VarOrFieldUse: PureExp ::= <Name>;
+VarUse: VarOrFieldUse;
+FieldUse: VarOrFieldUse; // this.f
+
+DataConstructorExp : PureExp ::= <Constructor> Param:PureExp* ;
+ExceptionConstructorExp : DataConstructorExp ;
+LetExp : PureExp ::= Var:ParamDecl Val:PureExp Exp:PureExp ;
+FnApp : PureExp ::= <Name> Param:PureExp* ;
+
+// Object run-type type checking and casting
+ImplementsExp : PureExp ::= Exp:PureExp InterfaceTypeUse ;
+AsExp : PureExp ::= Exp:PureExp InterfaceTypeUse ;
+
+abstract ParFnAppParam ;
+NamedParFnAppParam : ParFnAppParam ::= <Name> ;
+AnonymousFunctionDecl : ParFnAppParam ::= Param:ParamDecl* PureExp ;
+
+ParFnApp : PureExp ::= <Name> Param:PureExp* FuncParam:ParFnAppParam* ;
+
+CaseExp : PureExp ::= Expr:PureExp Branch:CaseBranch* ;
+IfExp : PureExp ::= CondExp:PureExp ThenExp:PureExp ElseExp:PureExp ;
+IfExpOld : IfExp ;           // old-style syntax, used for deprecation warning
+CaseBranch ::= Left:Pattern Right:PureExp ;
+
+//Patterns
+abstract Pattern ;
+
+// PatternVar are fresh variables, PatternVarUse match variables from
+// the outer scope.  See VarResolution.jrag rule "rewrite PatternVarUse"
+PatternVarUse: Pattern ::= <Name>;
+PatternVar: Pattern ::= Var:PatternVarDecl;
+ConstructorPattern: Pattern ::= <Constructor> Param:Pattern*;
+ExceptionPattern: ConstructorPattern;
+LiteralPattern: Pattern ::= Literal:LiteralExp;
+//PatternPair: Pattern ::= Left:Pattern Right:Pattern;
+UnderscorePattern: Pattern;
+
+
+Local ; // just the local marker
+
+// Expressions with side effects.
+NewExp: EffExp ::= <ClassName> Param:PureExp* [Local] ;
+abstract Call: EffExp ::= Callee:PureExp <Method> Param:PureExp*;
+SyncCall: Call;
+AsyncCall: Call;
+AwaitAsyncCall: Call;
+GetExp: EffExp ::= PureExp;
+OriginalCall: EffExp ::= Param:PureExp*; // original() is supported in traits, hence part of Core ABS.
+HoldExp: EffExp ::= Param:PureExp*;
+
+abstract Call1Exp: EffExp ::= Callee:PureExp <Method> Param:PureExp* Q:PureExp* D:PureExp ;
+SyncCall1Exp: Call1Exp;
+AsyncCall1Exp: Call1Exp;
+
+abstract Unary : PureExp ::= Operand:PureExp;
+
+abstract Binary : PureExp ::= Left:PureExp Right:PureExp;
+
+abstract ConBinary : PureExp ::= Left:PureExp Right:PureExp;
+
+//Integers
+MinusExp : Unary ;
+
+abstract ArithmeticExp : Binary ;
+
+abstract MultExp : ArithmeticExp ;
+MultMultExp : MultExp ;
+DivMultExp : MultExp ;
+ModMultExp : MultExp ;
+
+abstract AddExp : ArithmeticExp ;
+AddAddExp : AddExp ;
+SubAddExp : AddExp ;
+
+//Booleans
+NegExp: Unary ;
+
+abstract BoolExp : Binary ;
+AndBoolExp : BoolExp ;
+OrBoolExp : BoolExp ;
+
+ConjunctionExp: ConBinary ;
+
+//Relations
+abstract RelationalExpr : Binary;
+LTExp : RelationalExpr ;
+GTExp : RelationalExpr ;
+LTEQExp : RelationalExpr ;
+GTEQExp : RelationalExpr ;
+
+abstract EqualityExpr : RelationalExpr;
+EqExp : EqualityExpr ;
+NotEqExp : EqualityExpr ;

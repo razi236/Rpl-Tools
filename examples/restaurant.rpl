@@ -1,0 +1,84 @@
+// This example models a simple collaboration between the workflows of cooking and serving food in a restaurant
+module Restaurent;
+
+interface DinningRoom
+{
+    Int serve();
+    Int selectFood();
+    Int takeOrder();
+}
+class DinningRoom implements DinningRoom
+{
+    Int takeOrder()                                            // Food order workflow
+    {
+        Int menu = 0;                                          // Food
+        List<Int> rid = Nil;                                         // List to store the ID's of acquired resources
+        rid = hold(list[set[HeadWaiter, Efficiency(2)]]);      // Acquire a head waiter having efficiency 2, to welcome the guests and to take an order
+        menu = selectFood(this) after dl 3;                    // Guest select the food (synchronous call)
+        rel(rid);                                          // Release the acquired waiter to welcome the other guest.
+        return menu;
+    }
+    Int serve()                                                // Workflow to serve food in a dinning room
+    {
+        List<Int> rid = Nil;
+        rid = hold(list[set[RunnerWaiter, Efficiency(1)],set[RunnerWaiter, Efficiency(1)]]);
+                                                               // Acquire two runner waiters (who serve food) are acquired having efficiency 1.
+        // .... Food is Served ....
+        rel(rid);                                          // After delivering food to the guests the waiters are released, so they can serve other guests.
+        return 0;
+    }
+    Int selectFood()
+    {
+        Int deal = random(10);                                   // Select a deal number 0 and 9.
+        return deal;
+    }
+}
+
+interface Kitchen
+{
+    Int cook(Int deal);
+}
+class Kitchen implements Kitchen
+{
+    Int cook(Int deal)                                          // workflow to cook the food
+    {
+        List<Int> rid = Nil;
+        rid = hold(list[set[Cook, Efficiency(5)],set[CookAssistant, Efficiency(1)],set[CookAssistant, Efficiency(1)]]);
+                                                                // Acquire an experienced cook and two helper cooks
+        //.... Cooking ....
+        rel(rid);                                           // Release all cooks
+        return 0;
+    }
+}
+interface Restaurant
+{
+    Unit start();
+}
+class Restaurant implements Restaurant
+{
+    Unit start()
+    {
+        Fut<Int> f1; Fut<Int> f2; Fut<Int> f3;
+        Int deal = 0;
+        Kitchen kitchen = new Kitchen();
+        DinningRoom dinning_room = new DinningRoom();
+        // .... Guest Arrived ....
+        f1 = !takeOrder(dinning_room) after dl 10;                      // A request is send to dinning_room (asynchronously) to welcome the guests and take order
+        await f1?;                                                      // Wait until the guest sit properly and select the food, during wait other orders (tasks ready to execute) can be dealt.
+        deal = f1.get;                                                  // The guest has selected the food
+        f2 = !cook(kitchen,deal) after dl 25;                           // Request the kitchen to cook the selected food within 25 times unit.
+        f3 = !serve(dinning_room) after f2 dl 5;                        // When the food will be ready a request will be sent to dinning_room to serve the food to the guests, while during the cooking process other orders can be handled
+        await f3?;                                                      // Wait until the food is served, during wait other orders can be dealt
+    }
+}
+{
+    // Main Program Body
+    Fut<Unit> f;
+    Restaurant restaurant = new Restaurant();
+    Int k1 = random(10);
+    Int k2 = random(10);
+    cost(k1);
+    f = !start(restaurant) after dl 50;
+    await f?;
+    cost(k2);
+}

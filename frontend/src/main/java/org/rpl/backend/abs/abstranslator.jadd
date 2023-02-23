@@ -1,0 +1,1817 @@
+// -*- mode: java; tab-width: 4; -*-
+import java.io.PrintWriter;
+import org.rpl.backend.abs.*;
+import java.util.stream.Collectors;
+import com.google.common.collect.Streams;
+import java.sql.DriverManager;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+
+aspect doABSTranslator {
+
+    /** Controls whether to include the standard library in pretty-printing
+     */
+    public boolean Model.doABSTranslationStdLib = false;
+    public boolean Model.doABSTranslationResourceManager = false;
+
+    public void List.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter, String separator) {
+        if (getNumChild() > 0) {
+            getChild(0).doABSTranslation(stream, formatter);
+            for (int i = 1; i < getNumChild(); i++) {
+                stream.print(separator+" ");
+                getChild(i).doABSTranslation(stream, formatter);
+            }
+        }
+    }
+
+    public void List.doABSTranslation(PrintWriter stream, String method, RplToABSFormatter formatter) {
+        if (getNumChild() > 0) {
+            Stmt s = (Stmt) getChild(0);
+            if (s instanceof ReturnStmt) {
+                s.doABSTranslation(stream,formatter,method);
+            }
+            else {
+                s.doABSTranslation(stream, formatter);
+            }
+            //getChild(0).doABSTranslation(stream, formatter);
+            for (int i = 1; i < getNumChild(); i++) {
+                Stmt s1 = (Stmt) getChild(i);
+                if (s1 instanceof ReturnStmt) {
+                    s1.doABSTranslation(stream,formatter,method);
+                }
+                else {
+                    s1.doABSTranslation(stream, formatter);
+                }
+                //getChild(i).doABSTranslation(stream, formatter);
+            }
+        }
+    }
+    public void List.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter, String separator, String test) {
+        if (getNumChild() > 0) {
+            if(getNumChild() == 1)
+            {
+                stream.println();
+                formatter.afterStmt();
+                stream.print("await ");
+                getChild(0).doABSTranslation(stream, formatter);
+                //List<PureExp> futList= getChild(0);
+                //cleanFut(toString(futList),stream,formatter);
+                stream.print("?;");
+            }
+            else
+            {
+                stream.println();
+                formatter.afterStmt();
+                stream.print("if (True) {");
+                stream.println();
+                formatter.afterStmt();
+                formatter.afterStmt();
+                stream.print("await ");
+                getChild(0).doABSTranslation(stream, formatter);
+                stream.print("?;");
+                stream.println();
+                formatter.afterStmt();
+                stream.print("}");
+                for (int i = 1; i < getNumChild()-1; i++) {
+                    stream.println();
+                    formatter.afterStmt();
+                    stream.print("else if (True) {");
+                    stream.println();
+                    formatter.afterStmt();
+                    formatter.afterStmt();
+                    stream.print("await ");
+                    getChild(i).doABSTranslation(stream, formatter);
+                    stream.print("?;");
+                    stream.println();
+                    formatter.afterStmt();
+                    stream.print("}");
+                }
+                stream.println();
+                formatter.afterStmt();
+                stream.print("else {");
+                stream.println();
+                formatter.afterStmt();
+                formatter.afterStmt();
+                stream.print("await ");
+                getChild(getNumChild()-1).doABSTranslation(stream, formatter);
+                stream.print("?;");
+                stream.println();
+                formatter.afterStmt();
+                stream.print("}");
+            }
+            /*
+            stream.println();
+            formatter.afterStmt();
+            stream.println("{");
+            int count = 0;
+            for (int i = 1; i <= getNumChild(); i++) {
+                formatter.afterStmt();
+                stream.print("Bool b"+i+" = False;");
+                stream.println();
+                formatter.afterStmt();
+                stream.print("AwaitFut a"+i+" = new AwaitFut();");
+                stream.println();
+                formatter.afterStmt();
+                stream.print("a"+i+"!awaitFut(list[");
+                getChild(i-1).doABSTranslation(stream, formatter);
+                stream.print("]);");
+                stream.println();
+                formatter.afterStmt();
+                count++;
+            }
+            stream.print("while(!(");
+            stream.print("b"+1);
+            for(int i = 2; i <= count; i++)
+            {
+                stream.print(" || b"+i);
+            }
+            stream.print("))");
+            stream.println();
+            formatter.afterStmt();
+            formatter.beforeOpenBrace();
+            stream.println("{");
+            formatter.afterOpenBrace();
+            //formatter.afterStmt();
+            for(int i = 1; i <= count; i++)
+            {
+                formatter.afterStmt();
+                stream.print("b"+i+" = await a"+i+"!checkFut();");
+                stream.println();
+            }
+            formatter.afterStmt();
+            stream.print("await duration(1);");
+            stream.println();
+            //formatter.afterStmt();
+            formatter.beforeCloseBrace();
+            formatter.afterStmt();
+            stream.print("}");
+            stream.println();
+            formatter.afterStmt();
+            stream.print("}");
+            stream.println();
+            formatter.afterStmt();
+            formatter.afterCloseBrace();
+            */
+        }
+    }
+
+    public void List.cleanFut(String fut, PrintWriter stream, RplToABSFormatter formatter) {
+          String futList = fut;
+          Scanner scanner = new Scanner(futList);
+          scanner.useDelimiter("&");
+          if(scanner.hasNext())
+          {
+              String s = scanner.next();
+              stream.print(s+"?");
+          }
+          while(scanner.hasNext())
+          {
+            String s = scanner.next();
+            stream.print(" & ");
+            stream.print(s+"?");
+          }
+          scanner.close();
+    }
+    public void List.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        if (getNumChild() > 0) {
+            getChild(0).doABSTranslation(stream, formatter);
+            for (int i = 1; i < getNumChild(); i++) {
+                stream.println();
+                formatter.afterStmt();
+                getChild(i).doABSTranslation(stream, formatter);
+            }
+        }
+    }
+
+    public void ASTNode.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        throw new NotImplementedYetException(this);
+    }
+    public void ASTNode.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter, VarOrFieldUse v ) {
+        throw new NotImplementedYetException(this);
+    }
+    public void ASTNode.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter, String m ) {
+        throw new NotImplementedYetException(this);
+    }
+
+    public void Model.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        for (ModuleDecl d : getModuleDecls()) {
+            if (doABSTranslationStdLib || doABSTranslationResourceManager || (! Constants.BUILT_IN_LIBS.contains(d.getName()))) {
+                d.doABSTranslation(stream, formatter);
+            }
+        }
+
+        for (DeltaDecl d : getDeltaDecls()) {
+            d.doABSTranslation(stream, formatter);
+        }
+        if (hasProductLine()) {
+            getProductLine().doABSTranslation(stream, formatter);
+        }
+    }
+
+    public void ModuleDecl.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.println("module " + getName() + ";");
+        stream.println("import * from ABS.ResourceManager;");
+        //stream.println("export *;");
+        formatter.afterStmt();
+
+        for (Export e : getExportList()) {
+            e.doABSTranslation(stream, formatter);
+            stream.println();
+            formatter.afterStmt();
+        }
+
+        stream.println();
+        formatter.afterStmt();
+
+        for (Import i : getImportList()) {
+            if (i instanceof StarImport && ((StarImport)i).getModuleName().equals(Constants.ResourceManager_NAME)) continue;
+            i.doABSTranslation(stream, formatter);
+            stream.println();
+            formatter.afterStmt();
+        }
+
+        stream.println();
+        formatter.afterStmt();
+
+        for (Decl decl : getDecls()) {
+            decl.doABSTranslation(stream, formatter);
+            stream.println();
+            stream.println();
+            formatter.afterStmt();
+        }
+
+        stream.println();
+        formatter.afterStmt();
+
+        if (hasBlock()) {
+            getBlock().doABSTranslation(stream, formatter);
+        }
+        stream.println();
+
+        stream.flush();
+
+    }
+
+    public void ProductDecl.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print("product ");
+        stream.print(getName());
+        stream.print("(");
+        getProduct().getFeatureList().doABSTranslation(stream, formatter, ",");
+        stream.print(");");
+
+        stream.println();
+        formatter.afterStmt();
+        stream.flush();
+    }
+
+    public void Feature.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print(getName());
+        if (getNumAttrAssignment() > 0) {
+            stream.print("{");
+            getAttrAssignmentList().doABSTranslation(stream, formatter, ",");
+            stream.print("}");
+        }
+    }
+
+    public void AttrAssignment.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print(getName());
+        stream.print("=");
+        Value v = getValue();
+        if (v instanceof IntVal) {
+            stream.print(((IntVal) v).getValue());
+        } else if (v instanceof BoolVal) {
+            stream.print(((BoolVal) v).getValue() ? "True" : "False");
+        }
+    }
+
+    public void ProductLine.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print("productline ");
+        stream.print(getName());
+        stream.print(";");
+        formatter.afterStmt();
+        boolean hasFeatures = false;
+        if (getNumFeature() > 0 && ! hasFeatures) {
+            hasFeatures = true;
+            stream.println();
+            stream.print("features ");
+        }
+        getFeatureList().doABSTranslation(stream, formatter, ",");
+        if (hasFeatures) {
+            stream.println(";");
+            formatter.afterStmt();
+        }
+
+        getDeltaClauseList().doABSTranslation(stream, formatter);
+
+        stream.println();
+        formatter.afterStmt();
+        stream.flush();
+    }
+
+    public void DeltaClause.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print("delta ");
+        getDeltaspec().doABSTranslation(stream, formatter);
+
+        if (getNumAfterDeltaID() > 0) {
+            stream.print(" after ");
+            getAfterDeltaIDList().doABSTranslation(stream, formatter, ",");
+        }
+
+        if (hasAppCond()) {
+            stream.print(" when ");
+            getAppCond().doABSTranslation(stream, formatter);
+        }
+
+        stream.print(";");
+    }
+
+    public abstract void AppCond.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter);
+    
+    public void AppCondAnd.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        getLeft().doABSTranslation(stream, formatter);
+        stream.print(" && ");
+        getRight().doABSTranslation(stream, formatter);
+    }
+    
+    public void AppCondOr.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        getLeft().doABSTranslation(stream, formatter);
+        stream.print(" || ");
+        getRight().doABSTranslation(stream, formatter);
+    }
+
+    public void AppCondNot.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print("~");
+        getAppCond().doABSTranslation(stream, formatter);
+    }
+    
+    public void AppCondFeature.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print(getName());
+    }
+    
+    public void Deltaspec.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print(getDeltaID());
+        if (getNumDeltaparam() > 0) {
+            stream.print("(");
+            getDeltaparamList().doABSTranslation(stream, formatter, ",");
+            stream.print(")");
+        }
+    }
+
+    public void Deltaparam.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print(getName());
+    }
+
+    public void DeltaID.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print(getName());
+    }
+
+    public void Block.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        getAnnotationList().doABSTranslation(stream, formatter, "");
+        if (getNumAnnotation() > 0) {
+            stream.println();
+            formatter.afterStmt();
+        }
+        formatter.beforeOpenBrace();
+        stream.println("{");
+        formatter.afterOpenBrace();
+        formatter.afterStmt();
+        getStmtList().doABSTranslation(stream, formatter);
+        stream.println();
+        formatter.beforeCloseBrace();
+        formatter.afterStmt();
+        stream.print("}");
+        formatter.afterCloseBrace();
+    }
+
+    public void Block.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter, String m) {
+        getAnnotationList().doABSTranslation(stream, formatter, "");
+        if (getNumAnnotation() > 0) {
+            stream.println();
+            formatter.afterStmt();
+        }
+        formatter.beforeOpenBrace();
+        stream.println("{");
+        formatter.afterOpenBrace();
+        formatter.afterStmt();
+        getStmtList().doABSTranslation(stream, m, formatter);
+        stream.println();
+        formatter.beforeCloseBrace();
+        formatter.afterStmt();
+        stream.print("}");
+        formatter.afterCloseBrace();
+    }
+
+    public void MainBlock.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+            getAnnotationList().doABSTranslation(stream, formatter, "");
+            if (getNumAnnotation() > 0) {
+                stream.println();
+                formatter.afterStmt();
+            }
+            formatter.beforeOpenBrace();
+            stream.println("{");
+            formatter.afterOpenBrace();
+            formatter.afterStmt();
+            stream.println("ResourceManager rm = new ResourceManager();");
+            formatter.afterStmt();
+            stream.print("await rm!addRes(list[");
+            String sql = "SELECT * FROM Resources";
+            //Connection conn = null;
+            String url = "jdbc:sqlite:identifier.sqlite";
+            try (Connection conn = DriverManager.getConnection(url);
+                 Statement stmt  = conn.createStatement();
+                 ResultSet rs    = stmt.executeQuery(sql)){
+                 if(rs.next()){
+                    stream.print("set[" + rs.getString("ResourceCategory") + ", Efficiency(" +
+                       rs.getInt("ResourceEfficiency") + ")]");
+                       }
+
+                // loop through the result set
+                while (rs.next()) {
+                    stream.print(", set[" + rs.getString("ResourceCategory") + ", Efficiency(" +
+                                           rs.getInt("ResourceEfficiency") + ")]");
+                }
+                stream.println("]);");
+                conn.close();
+            } catch (SQLException e) {
+                System.out.println(e.getMessage());
+            }
+
+            formatter.afterStmt();
+            getStmtList().doABSTranslation(stream, formatter);
+            stream.println();
+            formatter.beforeCloseBrace();
+            formatter.afterStmt();
+            stream.print("}");
+            formatter.afterCloseBrace();
+        }
+
+    public void AssertStmt.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        getAnnotationList().doABSTranslation(stream, formatter, "");
+        if (getNumAnnotation() > 0) {
+            stream.println();
+            formatter.afterStmt();
+        }
+        stream.print("assert ");
+        getCondition().doABSTranslation(stream, formatter);
+        stream.print(";");
+    }
+
+    public void ThrowStmt.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        getAnnotationList().doABSTranslation(stream, formatter, "");
+        if (getNumAnnotation() > 0) {
+            stream.println();
+            formatter.afterStmt();
+        }
+        stream.print("throw ");
+        getReason().doABSTranslation(stream, formatter);
+        stream.print(";");
+    }
+
+    public void DieStmt.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        getAnnotationList().doABSTranslation(stream, formatter, "");
+        if (getNumAnnotation() > 0) {
+            stream.println();
+            formatter.afterStmt();
+        }
+        stream.print("die ");
+        getReason().doABSTranslation(stream, formatter);
+        stream.print(";");
+    }
+
+    public void AssignStmt.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        getAnnotationList().doABSTranslation(stream, formatter, "");
+        if (getNumAnnotation() > 0) {
+            stream.println();
+            formatter.afterStmt();
+        }
+        if (getValue() instanceof Call1Exp)
+        {
+            VarOrFieldUse v = getVar();
+            getValue().doABSTranslation(stream, formatter,v);
+        }
+        else
+        {
+            getVar().doABSTranslation(stream, formatter);
+            stream.print(" = ");
+            getValue().doABSTranslation(stream, formatter);
+            stream.print(";");
+        }
+    }
+
+    public void Call.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        doABSTranslationCallPrefix(stream, formatter);
+        getCallee().doABSTranslation(stream, formatter);
+        doABSTranslationCallType(stream, formatter);
+        stream.print(getMethod().replaceAll("\\$", ""));
+        stream.print("(");
+        getParamList().doABSTranslation(stream, formatter, ",");
+        stream.print(")");
+    }
+
+    public void Call1Exp.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        getQList().doABSTranslation(stream, formatter, " || ", "?");
+        //stream.print("[Deadline: Duration(");
+        //getD().doABSTranslation(stream, formatter);
+        //stream.print(")");
+        //stream.print("]");
+        stream.println();
+        formatter.afterStmt();
+        doABSTranslationCallPrefix(stream, formatter);
+        getCallee().doABSTranslation(stream, formatter);
+        doABSTranslationCallType(stream, formatter);
+        stream.print(getMethod().replaceAll("\\$", ""));
+        List<PureExp> list = getParamList();
+        if(list.getNumChild()>0)
+             stream.print("(rm, ");
+        else
+             stream.print("(rm");
+        getParamList().doABSTranslation(stream, formatter, ",");
+        stream.print(")");
+    }
+    public void Call1Exp.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter, VarOrFieldUse v) {
+         getQList().doABSTranslation(stream, formatter, " || ", "?");
+         //stream.print("[Deadline: Duration(");
+         //getD().doABSTranslation(stream, formatter);
+         //stream.print(")");
+         //stream.print("]");
+         stream.println();
+         formatter.afterStmt();
+         v.doABSTranslation(stream, formatter);
+         stream.print(" = ");
+         doABSTranslationCallPrefix(stream, formatter);
+         getCallee().doABSTranslation(stream, formatter);
+         doABSTranslationCallType(stream, formatter);
+         stream.print(getMethod().replaceAll("\\$", ""));
+         List<PureExp> list = getParamList();
+             if(list.getNumChild()>0)
+                 stream.print("(rm, ");
+             else
+                 stream.print("(rm");
+         list.doABSTranslation(stream, formatter, ",");
+         stream.print(")");
+         stream.print(";");
+    }
+
+    abstract public void Call.doABSTranslationCallType(PrintWriter stream, RplToABSFormatter formatter);
+
+    abstract public void Call.doABSTranslationCallPrefix(PrintWriter stream, RplToABSFormatter formatter);
+
+    abstract public void Call1Exp.doABSTranslationCallType(PrintWriter stream, RplToABSFormatter formatter);
+
+    abstract public void Call1Exp.doABSTranslationCallPrefix(PrintWriter stream, RplToABSFormatter formatter);
+
+
+
+
+
+    public void AsyncCall.doABSTranslationCallType(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print("!");
+    }
+
+    public void AwaitAsyncCall.doABSTranslationCallType(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print("!");
+    }
+
+    public void SyncCall.doABSTranslationCallType(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print(".");
+    }
+
+    public void AsyncCall.doABSTranslationCallPrefix(PrintWriter stream, RplToABSFormatter formatter) {
+    }
+
+    public void AwaitAsyncCall.doABSTranslationCallPrefix(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print("await ");
+    }
+
+    public void SyncCall.doABSTranslationCallPrefix(PrintWriter stream, RplToABSFormatter formatter) {
+    }
+
+    public void AsyncCall1Exp.doABSTranslationCallType(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print("!");
+    }
+
+    public void SyncCall1Exp.doABSTranslationCallType(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print(".");
+    }
+
+    public void AsyncCall1Exp.doABSTranslationCallPrefix(PrintWriter stream, RplToABSFormatter formatter) {
+    }
+
+    public void SyncCall1Exp.doABSTranslationCallPrefix(PrintWriter stream, RplToABSFormatter formatter) {
+    }
+
+    public void GetExp.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        getPureExp().doABSTranslation(stream, formatter);
+        stream.print(".get");
+    }
+
+    public void AddResStmt.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+            stream.print("await rm!addRes(");
+            getParamList().doABSTranslation(stream, formatter, ",");
+            stream.print(");");
+    }
+
+    public void HoldExp.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+             stream.print("await rm!holdRes(");
+             getParamList().doABSTranslation(stream, formatter, ",");
+             stream.print(")");
+    }
+
+    public void ReleaseResStmt.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+                stream.print("await rm!releaseRes(");
+                getRes().doABSTranslation(stream, formatter);
+                stream.print(");");
+    }
+
+
+    public void NewExp.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print("new ");
+        if (hasLocal()) {
+            stream.print("local ");
+        }
+        stream.print(getClassName());
+        stream.print("(");
+        getParamList().doABSTranslation(stream, formatter, ",");
+        stream.print(")");
+    }
+
+    public void OriginalCall.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print("original ");
+        stream.print("(");
+        getParamList().doABSTranslation(stream, formatter, ",");
+        stream.print(")");
+    }
+
+    public void AwaitStmt.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.println();
+        formatter.afterStmt();
+        getAnnotationList().doABSTranslation(stream, formatter, "");
+        if (getNumAnnotation() > 0) {
+            stream.println();
+            formatter.afterStmt();
+        }
+        stream.print("await ");
+        getGuard().doABSTranslation(stream, formatter);
+        stream.print(";");
+    }
+
+    public void AndGuard.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        getLeft().doABSTranslation(stream, formatter);
+        stream.print(" & ");
+        getRight().doABSTranslation(stream, formatter);
+    }
+
+    public void ClaimGuard.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        getVar().doABSTranslation(stream, formatter);
+        stream.print("?");
+    }
+
+    public void DurationGuard.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print("duration(");
+        getMin().doABSTranslation(stream, formatter);
+        stream.print(", ");
+        getMax().doABSTranslation(stream, formatter);
+        stream.print(")");
+    }
+
+    public void ExpGuard.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        getPureExp().doABSTranslation(stream, formatter);
+    }
+
+    public void CostStmt.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        getAnnotationList().doABSTranslation(stream, formatter, "");
+        if (getNumAnnotation() > 0) {
+            stream.println();
+            formatter.afterStmt();
+        }
+        stream.println();
+        formatter.afterStmt();
+        stream.print("wait(");
+        getMin().doABSTranslation(stream, formatter);
+        //stream.print(", ");
+        //getMin().doABSTranslation(stream, formatter);
+        stream.print(")");
+        stream.print(";");
+    }
+
+    public void ExpressionStmt.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        getAnnotationList().doABSTranslation(stream, formatter, "");
+        if (getNumAnnotation() > 0) {
+            stream.println();
+            formatter.afterStmt();
+        }
+        getExp().doABSTranslation(stream, formatter);
+        stream.print(";");
+    }
+
+    public void IfStmt.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        getAnnotationList().doABSTranslation(stream, formatter, "");
+        stream.print("if ( ");
+        getCondition().doABSTranslation(stream, formatter);
+        stream.print(" )");
+        getThen().doABSTranslation(stream, formatter);
+        if (hasElse()) {
+            stream.print(" else ");
+            getElse().doABSTranslation(stream, formatter);
+        }
+    }
+
+    public void ReturnStmt.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+    }
+
+    public void ReturnStmt.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter, String m) {
+        //stream.print("try {");
+        stream.println();
+        formatter.afterStmt();
+        /*
+        stream.print("Duration d = deadline();");
+        stream.println();
+        formatter.afterStmt();
+        stream.print("Rat r = durationValue(d);");
+        stream.println();
+        formatter.afterStmt();
+        stream.print("assert r > 0;");
+        stream.println();
+        formatter.afterStmt();
+        stream.print("} catch {");
+        stream.println();
+        formatter.afterStmt();
+        stream.print("AssertionFailException => println(`The method \"");
+        stream.print(m);
+        stream.print("\" have missed the deadline.`);");
+        stream.println();
+        formatter.afterStmt();
+        stream.print("}");
+        stream.println();
+        formatter.afterStmt();
+        */
+        getAnnotationList().doABSTranslation(stream, formatter, "");
+        stream.print("return ");
+        getRetExp().doABSTranslation(stream, formatter);
+        stream.print(";");
+    }
+
+    public void SkipStmt.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        getAnnotationList().doABSTranslation(stream, formatter, "");
+        stream.print("skip;");
+    }
+
+    public void SuspendStmt.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        getAnnotationList().doABSTranslation(stream, formatter, "");
+        stream.print("suspend;");
+    }
+
+    public void VarDeclStmt.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        getAnnotationList().doABSTranslation(stream, formatter, "");
+        if (getNumAnnotation() > 0) {
+            stream.println();
+            formatter.afterStmt();
+        }
+        getVarDecl().doABSTranslation(stream, formatter);
+        stream.print(";");
+    }
+
+    public void VarDecl.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        getTypeUse().doABSTranslation(stream, formatter);
+        stream.print(" ");
+        stream.print(getName());
+        if (hasInitExp()) {
+            stream.print(" = ");
+            getInitExp().doABSTranslation(stream, formatter);
+        }
+    }
+
+    public void WhileStmt.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        getAnnotationList().doABSTranslation(stream, formatter, "");
+        stream.print("while (");
+        getCondition().doABSTranslation(stream, formatter);
+        stream.print(") ");
+        getBody().doABSTranslation(stream, formatter);
+    }
+
+    public void ForeachStmt.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        getAnnotationList().doABSTranslation(stream, formatter, "");
+        stream.print("foreach (");
+        stream.print(getValueVar().getName());
+        if (hasIndexVar()) {
+            stream.print(", ");
+            stream.print(getIndexVar().getName());
+        }
+        stream.print(" in ");
+        getListExp().doABSTranslation(stream, formatter);
+        stream.print(") ");
+        getBody().doABSTranslation(stream, formatter);
+    }
+
+    public void CaseStmt.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        getAnnotationList().doABSTranslation(stream, formatter, "");
+        stream.print("switch (");
+        getExpr().doABSTranslation(stream, formatter);
+        formatter.beforeOpenBrace();
+        stream.println(") {");
+        formatter.afterOpenBrace();
+        for (CaseBranchStmt b : getBranchList()) {
+            formatter.afterStmt();
+            b.getLeft().doABSTranslation(stream, formatter);
+            stream.print(" => ");
+            b.getRight().doABSTranslation(stream, formatter);
+            stream.println();
+        }
+        formatter.beforeCloseBrace();
+        formatter.afterStmt();
+        stream.print("}");
+        formatter.afterCloseBrace();
+    }
+
+    public void TryCatchFinallyStmt.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        getAnnotationList().doABSTranslation(stream, formatter, "");
+        stream.print("try ");
+        getBody().doABSTranslation(stream, formatter);
+        stream.print(" catch");
+        formatter.beforeOpenBrace();
+        stream.println(" {");
+        formatter.afterOpenBrace();
+        for (CaseBranchStmt b : getCatchs()) {
+            formatter.afterStmt();
+            b.getLeft().doABSTranslation(stream, formatter);
+            stream.print(" => ");
+            b.getRight().doABSTranslation(stream, formatter);
+            stream.println();
+        }
+        formatter.beforeCloseBrace();
+        formatter.afterStmt();
+        stream.print("}");
+        if (hasFinally()) {
+            stream.print(" finally ");
+            getFinally().doABSTranslation(stream, formatter);
+        } else {
+            formatter.afterCloseBrace();
+        }
+    }
+
+    abstract public void Export.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter);
+
+    public void NamedExport.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print("export ");
+        getNames().doABSTranslation(stream, formatter, ",");
+        stream.print(";");
+    }
+
+    public void Name.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print(getName());
+    }
+
+    public void StarExport.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print("export *");
+        if (hasModuleName()) {
+            stream.print(" from ");
+            stream.print(getModuleName());
+        }
+        stream.print(";");
+    }
+
+    public void FromExport.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print("export ");
+        getNames().doABSTranslation(stream, formatter, ",");
+        stream.print(" from ");
+        stream.print(getModuleName());
+        stream.print(";");
+    }
+
+    public void NamedImport.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print("import ");
+        getNames().doABSTranslation(stream, formatter, ",");
+        stream.print(";");
+
+    }
+
+    public void StarImport.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print("import * from ");
+        stream.print(getModuleName());
+        stream.print(";");
+    }
+
+    public void FromImport.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print("import ");
+        getNames().doABSTranslation(stream, formatter, ",");
+        stream.print(" from ");
+        stream.print(getModuleName());
+        stream.print(";");
+    }
+    
+    /*protected boolean FunctionDecl.isSelector() {
+    	for (Annotation a : getAnnotationList()) {
+            if (! (a.getValue() instanceof StringLiteral)) {
+                continue;
+            }
+              
+            StringLiteral sl = (StringLiteral) a.getValue();
+            if (ASTPreProcessor.FUNCTIONSELECTOR.equals(sl.getContent())) {
+                return true;
+            }
+        }
+        return false;
+    }*/
+    
+    public void FunctionDecl.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        if (isSelector()) {
+        	//skip selector
+        	return;
+        }
+    
+        getAnnotationList().doABSTranslation(stream, formatter, "");
+        if (getNumAnnotation() > 0) {
+            stream.println();
+            formatter.afterStmt();
+        }
+        stream.print("def ");
+        getTypeUse().doABSTranslation(stream, formatter);
+        stream.print(" ");
+        stream.print(getName());
+        doABSTranslationTypeParam(stream, formatter);
+        stream.print("(");
+        getParamList().doABSTranslation(stream, formatter, ",");
+        stream.print(") = ");
+        getFunctionDef().doABSTranslation(stream, formatter);
+        formatter.afterStmt();
+    }
+
+    public void PartialFunctionDecl.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+      getAnnotationList().doABSTranslation(stream, formatter, "");
+      if (getNumAnnotation() > 0) {
+          stream.println();
+          formatter.afterStmt();
+      }
+      stream.print("def ");
+      getTypeUse().doABSTranslation(stream, formatter);
+      stream.print(" ");
+      stream.print(getName());
+      doABSTranslationTypeParam(stream, formatter);
+      stream.print("(");
+      getParamList().doABSTranslation(stream, formatter, ",");
+      stream.print(") (");
+      getFuncParamList().doABSTranslation(stream, formatter, ",");
+      stream.print(") = ");
+      getPartialFunctionDef().doABSTranslation(stream, formatter);
+      formatter.afterStmt();
+    }
+
+    public void FunctionParamDecl.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+      stream.print(getName());
+    }
+
+    public void PartialFunctionDef.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.println();
+        formatter.afterOpenBrace();
+        formatter.afterStmt();
+        getPureExp().doABSTranslation(stream, formatter);
+        stream.print(";");
+        formatter.beforeCloseBrace();
+    }
+
+    public void NamedParFnAppParam.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print(getName());
+    }
+
+    public void AnonymousFunctionDecl.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print("(");
+        getParams().doABSTranslation(stream, formatter, ",");
+        stream.print(") => ");
+        getPureExp().doABSTranslation(stream, formatter);
+    }
+
+    public void FunctionDecl.doABSTranslationTypeParam(PrintWriter stream, RplToABSFormatter formatter) { }
+
+    public void ParametricFunctionDecl.doABSTranslationTypeParam(PrintWriter stream, RplToABSFormatter formatter) { 
+        if (getNumTypeParameter() > 0) {
+            stream.print("<");
+            getTypeParameterList().doABSTranslation(stream, formatter, ",");
+            stream.print(">");
+        }	
+    }
+
+    public void PartialFunctionDecl.doABSTranslationTypeParam(PrintWriter stream, RplToABSFormatter formatter) {}
+
+    public void ParametricPartialFunctionDecl.doABSTranslationTypeParam(PrintWriter stream, RplToABSFormatter formatter) {
+       if (getNumTypeParameter() > 0) {
+           stream.print("<");
+           getTypeParameterList().doABSTranslation(stream, formatter, ",");
+           stream.print(">");
+       }
+    }
+
+    public void BuiltinFunctionDef.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print("builtin;");
+    }
+
+    public void ExpFunctionDef.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.println();
+        formatter.afterOpenBrace();
+        formatter.afterStmt();
+        getRhs().doABSTranslation(stream, formatter);
+        stream.print(";");
+        formatter.beforeCloseBrace();
+    }
+
+    public void DeltaDecl.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print("delta ");
+        stream.print(getName());
+
+        List<DeltaParamDecl> dpl = getParamList();
+        if (dpl.getNumChild() > 0) {
+            stream.print("(");
+            dpl.doABSTranslation(stream, formatter, ",");
+            stream.print(")");
+        }
+        stream.println(";");
+        formatter.afterStmt();
+        if (hasImportedModule()) {
+            getImportedModule().doABSTranslation(stream, formatter);
+        }
+        stream.println();
+        getModuleModifierList().doABSTranslation(stream, formatter);
+
+        //        List<FunctionalModifier> fms = getFunctionalModifierList();
+        //        int mcount = fms.getNumChild();
+        //        if (mcount > 0) {
+        //            formatter.afterStmt();
+        //        }
+        //        fms.doABSTranslation(stream, formatter);
+        //
+        //        List<ClassOrIfaceModifier> cms = getClassOrIfaceModifierList();
+        //        if (cms.getNumChild() > 0 && mcount == 0) {
+        //            formatter.afterStmt();
+        //        } 
+        //        cms.doABSTranslation(stream, formatter);
+
+        stream.println();
+    }
+
+    public void DeltaAccess.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print("uses ");
+        stream.print(getModuleName());
+        stream.print(";");
+    }
+
+    public void AddImportModifier.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print("adds ");
+        getImport().doABSTranslation(stream, formatter);
+        stream.println();
+    }
+
+    public void AddExportModifier.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print("adds ");
+        getExport().doABSTranslation(stream, formatter);
+        stream.println();
+    }
+
+    public void RemoveClassModifier.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print("removes class ");
+        stream.print(getName());
+        stream.print(";");
+    }
+
+    public void ModifyClassModifier.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print("modifies class ");
+        stream.print(getName());
+
+        if (getNumAddedInterface() > 0) {
+            stream.print(" adds ");
+            getAddedInterfaceList().doABSTranslation(stream, formatter, ",");
+        }
+        // TODO deal with removedInterfaceList
+
+        formatter.beforeOpenBrace();
+        stream.println("{");
+        formatter.afterOpenBrace();
+
+        List<Modifier> mms = getModifierList();
+        if (mms.getNumChild() > 0) {
+            mms.doABSTranslation(stream, formatter);
+            stream.println();
+            formatter.afterStmt();
+        }
+
+        formatter.beforeCloseBrace();
+        stream.print("}");
+        formatter.afterCloseBrace();
+    }
+
+    public void AddFieldModifier.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print("adds ");
+        getFieldDecl().doABSTranslation(stream, formatter);
+    }
+
+    public void RemoveFieldModifier.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print("removes ");
+        getFieldDecl().doABSTranslation(stream, formatter);
+    }
+
+    public void AddInterfaceModifier.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print("adds ");
+        getInterfaceDecl().doABSTranslation(stream, formatter);
+    }
+
+    public void AddClassModifier.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print("adds ");
+        getClassDecl().doABSTranslation(stream, formatter);
+    }
+
+    public void DeltaFieldParam.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        getParamDecl().doABSTranslation(stream, formatter);
+    }
+
+    public void DeltaClassParam.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print(getName());
+        stream.print(" ");
+        getHasCondition().doABSTranslation(stream, formatter);
+    }
+
+    public void HasField.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print("hasField");
+        getFieldDecl().doABSTranslation(stream, formatter);
+    }
+
+    public void HasInterface.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print("hasInterface");
+        getInterfaceTypeUse().doABSTranslation(stream, formatter);
+    }
+
+    public void HasMethod.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print("hasMethod");
+        getMethodSig().doABSTranslation(stream, formatter);
+    }
+
+    public void TypeSynDecl.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        getAnnotationList().doABSTranslation(stream, formatter, "");
+        if (getNumAnnotation() > 0) {
+            stream.println();
+            formatter.afterStmt();
+        }
+        stream.print("type ");
+        stream.print(getName());
+        stream.print(" = ");
+        getValue().doABSTranslation(stream, formatter);
+        stream.print(";");
+    }
+
+    public void InterfaceDecl.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        getAnnotationList().doABSTranslation(stream, formatter, "");
+        if (getNumAnnotation() > 0) {
+            stream.println();
+            formatter.afterStmt();
+        }
+        stream.print("interface ");
+        stream.print(getName());
+	/* Filter `extends ABS.StdLib.Object, ...` by way of streams. */
+	String s = Streams.stream(getExtendedInterfaceUses()).filter(i -> !i.getName().equals(Constants.STDLIB_NAME+".Object")).map(tu -> tu.getName()).collect(Collectors.joining(", "));
+        if (s.length() > 0) {
+            stream.print(" extends ");
+            stream.print(s);
+        }
+        formatter.beforeOpenBrace();
+        stream.println(" {");
+        formatter.afterOpenBrace();
+        formatter.afterStmt();
+
+        List<MethodSig> ms = getBodys();
+        if (ms.getNumChild() > 0) {
+            ms.getChild(0).doABSTranslation(stream, formatter);
+            stream.print(";");
+            for (int i = 1; i < ms.getNumChild(); i++) {
+                stream.println();
+                formatter.afterStmt();
+                ms.getChild(i).doABSTranslation(stream, formatter);
+                stream.print(";");
+            }
+        }
+
+        formatter.beforeCloseBrace();
+        stream.print("}");
+        formatter.afterCloseBrace();
+    }
+
+    public void InterfaceDecl1.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+            getAnnotationList().doABSTranslation(stream, formatter, "");
+            if (getNumAnnotation() > 0) {
+                stream.println();
+                formatter.afterStmt();
+            }
+            stream.print("interface ");
+            stream.print(getName());
+    	/* Filter `extends ABS.StdLib.Object, ...` by way of streams. */
+    	String s = Streams.stream(getExtendedInterfaceUses()).filter(i -> !i.getName().equals(Constants.STDLIB_NAME+".Object")).map(tu -> tu.getName()).collect(Collectors.joining(", "));
+            if (s.length() > 0) {
+                stream.print(" extends ");
+                stream.print(s);
+            }
+            formatter.beforeOpenBrace();
+            stream.println(" {");
+            formatter.afterOpenBrace();
+            formatter.afterStmt();
+
+            List<MethodSig1> ms = getBodys();
+            if (ms.getNumChild() > 0) {
+                ms.getChild(0).doABSTranslation(stream, formatter);
+                stream.print(";");
+                for (int i = 1; i < ms.getNumChild(); i++) {
+                    stream.println();
+                    formatter.afterStmt();
+                    ms.getChild(i).doABSTranslation(stream, formatter);
+                    stream.print(";");
+                }
+            }
+
+            formatter.beforeCloseBrace();
+            stream.print("}");
+            formatter.afterCloseBrace();
+        }
+
+    public void MethodSig.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        getReturnType().doABSTranslation(stream, formatter);
+        stream.print(" ");
+        stream.print(getName().replaceAll("\\$", ""));
+        List<ParamDecl> list = getParams();
+            if(list.getNumChild()>0)
+                stream.print("(ResourceManager rm,");
+            else
+                stream.print("(ResourceManager rm");
+        list.doABSTranslation(stream, formatter, ",");
+        //stream.print("(ResourceManager rm,");
+        //getParams().doABSTranslation(stream, formatter, ",");
+        stream.print(")");
+    }
+
+    public void MethodSig1.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        getReturnType().doABSTranslation(stream, formatter);
+        stream.print(" ");
+        stream.print(getName().replaceAll("\\$", ""));
+        stream.print("(");
+        getObjs().doABSTranslation(stream, formatter, ",");
+        stream.print(", ");
+        getParams().doABSTranslation(stream, formatter, ",");
+        stream.print(")");
+    }
+
+    public void ClassDecl.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        getAnnotationList().doABSTranslation(stream, formatter, "");
+        if (getNumAnnotation() > 0) {
+            stream.println();
+            formatter.afterStmt();
+        }
+        stream.print("class ");
+        stream.print(getName());
+
+        if (getNumParam() > 0) {
+            stream.print("(");
+            getParams().doABSTranslation(stream, formatter, ",");
+            stream.print(")");
+        }
+
+        if (getNumImplementedInterfaceUse() > 0) {
+            stream.print(" implements ");
+            getImplementedInterfaceUseList().doABSTranslation(stream, formatter, ",");
+        }
+        formatter.beforeOpenBrace();
+        stream.println(" {");
+        formatter.afterOpenBrace();
+        formatter.afterStmt();
+
+        getFieldList().doABSTranslation(stream, formatter);
+
+        /*stream.println();
+        formatter.afterStmt();*/
+
+        if (hasInitBlock()) {
+            getInitBlock().doABSTranslation(stream, formatter);
+            stream.println();
+            formatter.afterStmt();
+        }
+
+        stream.println();
+        formatter.afterStmt();
+
+        if (hasRecoverBranch()) {
+            stream.print("recover ");
+            formatter.beforeOpenBrace();
+            stream.print("{");
+            formatter.afterOpenBrace();
+            stream.println();
+            for (CaseBranchStmt b : getRecoverBranchs()) {
+                formatter.afterStmt();
+                b.getLeft().doABSTranslation(stream, formatter);
+                stream.print(" => ");
+                b.getRight().doABSTranslation(stream, formatter);
+                stream.println();
+            }
+            formatter.beforeCloseBrace();
+            formatter.afterStmt();
+            stream.print("}");
+            formatter.afterCloseBrace();
+            stream.println();
+            formatter.afterStmt();
+        }
+
+        List<MethodImpl> methods = getMethodList();
+        if (methods.getNumChild() > 0) {
+            methods.doABSTranslation(stream, formatter);        
+            stream.println();
+            formatter.afterStmt();
+        }
+
+        formatter.beforeCloseBrace();
+        stream.print("}");
+        formatter.afterCloseBrace();
+    }
+
+    public void ClassDecl1.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+            getAnnotationList().doABSTranslation(stream, formatter, "");
+            if (getNumAnnotation() > 0) {
+                stream.println();
+                formatter.afterStmt();
+            }
+            stream.print("class ");
+            stream.print(getName());
+
+            if (getNumParam() > 0) {
+                stream.print("(");
+                getParams().doABSTranslation(stream, formatter, ",");
+                stream.print(")");
+            }
+
+            if (getNumImplementedInterfaceUse() > 0) {
+                stream.print(" implements ");
+                getImplementedInterfaceUseList().doABSTranslation(stream, formatter, ",");
+            }
+            formatter.beforeOpenBrace();
+            stream.println(" {");
+            formatter.afterOpenBrace();
+            formatter.afterStmt();
+
+            getFieldList().doABSTranslation(stream, formatter);
+
+            /*stream.println();
+            formatter.afterStmt();*/
+
+            if (hasInitBlock()) {
+                getInitBlock().doABSTranslation(stream, formatter);
+                stream.println();
+                formatter.afterStmt();
+            }
+
+            stream.println();
+            formatter.afterStmt();
+
+            if (hasRecoverBranch()) {
+                stream.print("recover ");
+                formatter.beforeOpenBrace();
+                stream.print("{");
+                formatter.afterOpenBrace();
+                stream.println();
+                for (CaseBranchStmt b : getRecoverBranchs()) {
+                    formatter.afterStmt();
+                    b.getLeft().doABSTranslation(stream, formatter);
+                    stream.print(" => ");
+                    b.getRight().doABSTranslation(stream, formatter);
+                    stream.println();
+                }
+                formatter.beforeCloseBrace();
+                formatter.afterStmt();
+                stream.print("}");
+                formatter.afterCloseBrace();
+                stream.println();
+                formatter.afterStmt();
+            }
+
+            List<MethodImpl1> methods = getMethodList();
+            if (methods.getNumChild() > 0) {
+                methods.doABSTranslation(stream, formatter);
+                stream.println();
+                formatter.afterStmt();
+            }
+
+            formatter.beforeCloseBrace();
+            stream.print("}");
+            formatter.afterCloseBrace();
+        }
+
+    public void FieldDecl.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        getTypeUse().doABSTranslation(stream, formatter);
+        stream.print(" ");
+        stream.print(getName());
+        if (hasInitExp()) {
+            stream.print(" = ");
+            getInitExp().doABSTranslation(stream, formatter);
+        }
+        stream.print(";");
+    }
+
+    public void MethodImpl.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        getMethodSig().doABSTranslation(stream, formatter);
+        if(hasReturnStmt()) {
+            String m = getMethodSig().getName().replaceAll("\\$", "");
+            getBlock().doABSTranslation(stream, formatter, m);
+        }
+        else{
+            getBlock().doABSTranslation(stream, formatter);
+        }
+        //getBlock().doABSTranslation(stream, formatter);
+    }
+
+    public void MethodImpl1.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        getMethodSig1().doABSTranslation(stream, formatter);
+        getBlock().doABSTranslation(stream, formatter);
+    }
+
+    public void TypeParameterDecl.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print(getName());
+    }
+
+    public void DataTypeDecl.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print("data ");
+        stream.print(getName());
+        doABSTranslationTypeParam(stream, formatter);
+        if (getNumDataConstructor() > 0) {
+            stream.print(" = ");
+            getDataConstructorList().doABSTranslation(stream, formatter, "|");
+        }
+        stream.print(";");
+    }
+
+    public void AddDataTypeModifier.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter)
+    {
+        stream.print("adds "); 
+        getDataTypeDecl().doABSTranslation(stream, formatter);
+        stream.println();
+    }
+
+    public void ModifyInterfaceModifier.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print("modifies interface ");
+        stream.print(getName());
+
+        formatter.beforeOpenBrace();
+        stream.println("{");
+        formatter.afterOpenBrace();
+
+        getMethodSigModifierList().doABSTranslation(stream, formatter);
+
+        formatter.beforeCloseBrace();
+        stream.print("}");
+        formatter.afterCloseBrace();
+    }
+
+    public void AddMethodSigModifier.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print("adds ");
+        getMethodSig().doABSTranslation(stream, formatter);
+        stream.print(";");
+    }
+
+    public void RemoveMethodSigModifier.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print("removes ");
+        getMethodSig().doABSTranslation(stream, formatter);
+        stream.print(";");
+    }
+
+    public void DataTypeDecl.doABSTranslationTypeParam(PrintWriter stream, RplToABSFormatter formatter) { }
+
+    public void ParametricDataTypeDecl.doABSTranslationTypeParam(PrintWriter stream, RplToABSFormatter formatter) { 
+        if (getNumTypeParameter() > 0) {
+            stream.print("<");
+            getTypeParameterList().doABSTranslation(stream, formatter, ",");
+            stream.print(">");
+        }
+    }
+
+    public void DataConstructor.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print(getName());
+        if (getNumConstructorArg() > 0) {
+            stream.print("(");
+            getConstructorArgList().doABSTranslation(stream, formatter, ",");
+            stream.print(")");
+        }
+    }
+
+    public void ConstructorArg.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        getTypeUse().doABSTranslation(stream, formatter);
+        if (hasSelectorName()) {
+            stream.print(" ");
+            stream.print(getSelectorName());
+        }
+    }
+
+    public void UnresolvedTypeUse.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        // TODO: getAnnotationList().doABSTranslation(stream, formatter, "");
+        stream.print(getName());    
+    }
+
+    public void DataTypeUse.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        getAnnotationList().doABSTranslation(stream, formatter, "");
+        stream.print(getName());
+        doABSTranslationTypeParam(stream, formatter);
+    }
+
+    public void DataTypeUse.doABSTranslationTypeParam(PrintWriter stream, RplToABSFormatter formatter) { }
+
+    public void ParametricDataTypeUse.doABSTranslationTypeParam(PrintWriter stream, RplToABSFormatter formatter) { 
+        if (getNumParam() > 0) {
+            stream.print("<");
+            getParamList().doABSTranslation(stream, formatter, ",");
+            stream.print(">");
+        }
+    }
+
+    public void TypedAnnotation.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print("[");
+        getTypeIdUse().doABSTranslation(stream, formatter);
+        stream.print(" : ");
+        getValue().doABSTranslation(stream, formatter);
+        stream.print("]");
+    }
+
+    public void Annotation.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print("[");
+        getValue().doABSTranslation(stream, formatter);
+        stream.print("]");
+    }
+
+    public void TypeParameterUse.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print(getName());
+    }
+
+    public void InterfaceTypeUse.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print(getName());
+    }
+
+    public void FieldUse.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print("this." + getName());
+    }
+
+    public void VarUse.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print(getName());
+    }
+
+    public void Binary.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        formatter.beforeOpenBrace();
+        stream.print("( ");
+        formatter.afterOpenBrace();
+        getLeft().doABSTranslation(stream, formatter);
+        stream.print(" ");
+        doABSTranslationOperator(stream, formatter);
+        stream.print(" ");
+        getRight().doABSTranslation(stream, formatter);
+        formatter.beforeCloseBrace();
+        stream.print(" )");
+        formatter.afterCloseBrace();
+    }
+
+    public void ConBinary.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+            formatter.beforeOpenBrace();
+            //stream.print("( ");
+            //formatter.afterOpenBrace();
+            getLeft().doABSTranslation(stream, formatter);
+            stream.print("?");
+            stream.print(" ");
+            doABSTranslationOperator(stream, formatter);
+            stream.print(" ");
+            getRight().doABSTranslation(stream, formatter);
+            //stream.print("?");
+            //stream.print(" ");
+            //caformatter.beforeCloseBrace();
+            //stream.print(" )");
+            formatter.afterCloseBrace();
+        }
+
+    abstract public void Binary.doABSTranslationOperator(PrintWriter stream, RplToABSFormatter formatter);
+
+    abstract public void ConBinary.doABSTranslationOperator(PrintWriter stream, RplToABSFormatter formatter);
+
+    public void AddAddExp.doABSTranslationOperator(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print("+");
+    }
+
+    public void SubAddExp.doABSTranslationOperator(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print("-");
+    }
+
+    public void DivMultExp.doABSTranslationOperator(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print("/");
+    }
+
+    public void ModMultExp.doABSTranslationOperator(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print("%");
+    }
+
+    public void MultMultExp.doABSTranslationOperator(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print("*");
+    }
+
+    public void AndBoolExp.doABSTranslationOperator(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print("&&");
+    }
+
+    public void ConjunctionExp.doABSTranslationOperator(PrintWriter stream, RplToABSFormatter formatter) {
+            stream.print("&");
+        }
+
+    public void OrBoolExp.doABSTranslationOperator(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print("||");
+    }
+
+    public void EqExp.doABSTranslationOperator(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print("==");
+    }
+
+    public void NotEqExp.doABSTranslationOperator(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print("!=");
+    }
+
+    public void GTEQExp.doABSTranslationOperator(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print(">=");
+    }
+
+    public void GTExp.doABSTranslationOperator(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print(">");
+    }
+
+    public void LTEQExp.doABSTranslationOperator(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print("<=");
+    }
+
+    public void LTExp.doABSTranslationOperator(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print("<");
+    }
+
+    public void CaseExp.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print("case ");
+        getExpr().doABSTranslation(stream, formatter);
+        formatter.beforeOpenBrace();
+        stream.println(" {");
+        formatter.afterOpenBrace();
+        for (CaseBranch b : getBranchList()) {
+            formatter.afterStmt();
+            b.getLeft().doABSTranslation(stream, formatter);
+            stream.print(" => ");
+            b.getRight().doABSTranslation(stream, formatter);
+            stream.println(";");
+        }
+        formatter.beforeCloseBrace();
+        formatter.afterStmt();
+        stream.print("}");
+        formatter.afterCloseBrace();
+    }
+
+    public void ConstructorPattern.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print(getConstructor());
+        if (getNumParam() > 0) {
+            stream.print("( ");
+            getParamList().doABSTranslation(stream, formatter, ",");
+            stream.print(" )");
+        }
+    }
+
+    public void LiteralPattern.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        getLiteral().doABSTranslation(stream, formatter);
+    }
+
+    public void PatternVar.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        getVar().doABSTranslation(stream, formatter);
+    }
+
+    public void PatternVarDecl.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print(getName());
+    }
+
+    public void PatternVarUse.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print(getName());
+    }
+
+    public void UnderscorePattern.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print("_");
+    }
+
+    public void DataConstructorExp.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print(getConstructor());
+        if (getNumParam() > 0) {
+            stream.print("( ");
+            getParamList().doABSTranslation(stream, formatter, ",");
+            stream.print(" )");
+        }
+    }
+
+    public void FnApp.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        // This is a gross special case in pretty printing that follows a
+        // gross special case in syntax.  Consider adding a "first-class" list
+        // literal that can be used outside of the special constructor call
+        // syntax?
+        boolean noParens = getNumParam() == 1 && getParam(0) instanceof ListLiteral;
+        stream.print(getName());
+        if (!noParens) stream.print("(");
+        getParamList().doABSTranslation(stream, formatter, ",");
+        if (!noParens) stream.print(")");
+    }
+
+    public void ParFnApp.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print(getName());
+        stream.print("(");
+        getParamList().doABSTranslation(stream, formatter, ",");
+        stream.print(") (");
+        getFuncParamList().doABSTranslation(stream, formatter, ",");
+        stream.print(")");
+    }
+
+    public void IfExp.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print("(when ");
+        getCondExp().doABSTranslation(stream, formatter);
+        stream.print(" then ");
+        getThenExp().doABSTranslation(stream, formatter);
+        stream.print(" else ");
+        getElseExp().doABSTranslation(stream, formatter);
+        stream.print(")");
+    }
+
+    public void LetExp.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print("let ( ");
+        getVar().doABSTranslation(stream, formatter);
+        stream.print(" ) = ");
+        getVal().doABSTranslation(stream, formatter);
+        stream.print(" in ");
+        getExp().doABSTranslation(stream, formatter);
+    }
+
+    public void ParamDecl.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        getAnnotationList().doABSTranslation(stream, formatter, "");
+        getTypeUse().doABSTranslation(stream, formatter);
+        stream.print(" ");
+        stream.print(getName());
+    }
+
+    public void IntLiteral.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print(getContent());
+    }
+
+    public void StringLiteral.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print("\"");
+        for (char c : getContent().toCharArray()) {
+            switch (c) {
+            case '\\': stream.print("\\\\");
+                break;
+            case '"': stream.print("\\\"");
+                break;
+            case '\t': stream.print("\\t");
+                break;
+            case '\n': stream.print("\\n");
+                break;
+            case '\r': stream.print("\\r");
+                break;
+            default: stream.print(c);
+            }
+        }
+        stream.print("\"");
+    }
+
+    public void FloatLiteral.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print(getContent());
+    }
+
+    public void ListLiteral.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print("[");
+        String interp = "";
+        for (PureExp e : getPureExps()) {
+            stream.print(interp);
+            interp = ", ";
+            e.doABSTranslation(stream, formatter);
+        }
+        stream.print("]");
+    }
+
+    public void NullExp.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print("null");
+    }
+
+    public void ThisExp.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print("this");
+    }
+
+    public void DestinyExp.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print("destiny");
+    }
+
+    public void MinusExp.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print("- ");
+        getOperand().doABSTranslation(stream, formatter);
+    }
+
+    public void NegExp.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+        stream.print("! ");
+        getOperand().doABSTranslation(stream, formatter);
+    }
+
+    public void TraitDecl.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+
+    }
+    public void TraitUse.doABSTranslation(PrintWriter stream, RplToABSFormatter formatter) {
+
+    }
+}

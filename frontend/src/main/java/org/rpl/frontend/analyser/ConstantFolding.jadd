@@ -1,0 +1,54 @@
+import java.math.BigInteger;
+aspect ConstantFolding {
+
+    rewrite MinusExp {
+        when (getOperand().isConstant()
+              && getOperand().getType().isIntType()
+              && ((IntLiteral) getOperand()).getContent().startsWith("-"))
+        to IntLiteral new IntLiteral(((IntLiteral)getOperand()).getContent().substring(1));
+        when (getOperand().isConstant()
+              && getOperand().getType().isIntType())
+        to IntLiteral new IntLiteral("-" + ((IntLiteral)getOperand()).getContent());
+        when (getOperand().isConstant()
+              && getOperand().getType().isFloatType())
+        to FloatLiteral new FloatLiteral("-" + ((FloatLiteral)getOperand()).getContent());
+    }
+    
+    rewrite MultMultExp {
+        when (getLeft().isConstant() && getRight().isConstant()
+              && getLeft().getType().isIntType()
+              && getRight().getType().isIntType())
+        to IntLiteral new IntLiteral(new BigInteger(((IntLiteral)getLeft()).getContent())
+                                     .multiply(new BigInteger(((IntLiteral)getRight()).getContent()))
+                                     .toString());
+    }
+
+    rewrite AddAddExp {
+        when (getLeft().isConstant() && getRight().isConstant()
+              && getLeft().getType().isIntType()
+              && getRight().getType().isIntType())
+        to IntLiteral new IntLiteral(new BigInteger(((IntLiteral)getLeft()).getContent())
+                                     .add(new BigInteger(((IntLiteral)getRight()).getContent()))
+                                     .toString());
+        when (getLeft().isConstant() && getRight().isConstant()
+              && getLeft().getType().isStringType()
+              && getRight().getType().isStringType())
+        to StringLiteral new StringLiteral((((StringLiteral)getLeft()).getContent())
+                                           + ((StringLiteral)getRight()).getContent());
+    }
+
+    rewrite SubAddExp {
+        when (getLeft().isConstant() && getRight().isConstant()
+              && getLeft().getType().isIntType()
+              && getRight().getType().isIntType())
+        to IntLiteral new IntLiteral(new BigInteger(((IntLiteral)getLeft()).getContent())
+                                     .subtract(new BigInteger(((IntLiteral)getRight()).getContent()))
+                                     .toString());
+    }
+
+}
+
+
+// Local Variables:
+// mode: java
+// End:

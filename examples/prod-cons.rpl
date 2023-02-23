@@ -1,0 +1,39 @@
+module ProdCons;
+
+interface Producer {
+	Int p (Int a);
+}
+
+interface Consumer {
+	Int c (Int a);
+}
+
+class Producer implements Producer {
+	Int p(Int a) {
+		cost(a);
+		return 0;
+	}
+}
+
+class Consumer implements Consumer {
+	Int c (Int a) {
+		cost(a);
+		return 0;
+	}
+}
+
+{
+    Fut<Int> f1; Fut<Int> f2; Fut<Int> f3; Fut<Int> f4;
+    Producer pr = new Producer ();
+    Consumer cr = new Consumer ();
+    Int k1 = random(10);
+    Int k2 = random(10);
+    cost(k1);
+    f1 = !p(pr,10) after dl 15;
+    f2 = !p(pr,10) after f1 dl 15;
+    cost(k2);
+    f3 = !c(cr,5) after dl 10;
+    f4 = !c(cr,5) after dl f2 10;
+    await f3?;
+    await f4?;
+}

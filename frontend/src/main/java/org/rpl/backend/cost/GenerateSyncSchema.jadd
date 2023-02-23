@@ -1,0 +1,744 @@
+
+// -*- mode: java; tab-width: 4; -*-
+import java.io.PrintWriter;
+import org.rpl.backend.cost.*;
+import java.util.stream.Collectors;
+import com.google.common.collect.Streams;
+
+aspect generate_sync_schema {
+
+    /** Controls whether to include the standard library in pretty-printing
+     */
+    public boolean Model.generate_sync_schemaStdLib = false;
+
+    public void List.generate_sync_schema(String m,PrintWriter o) {
+        if (getNumChild() > 0) {
+            getChild(0).generate_sync_schema(m,o);
+            for (int i = 1; i < getNumChild(); i++) {
+                getChild(i).generate_sync_schema(m,o);
+            }
+        }
+    }
+
+    public void ASTNode.generate_sync_schema(String m,PrintWriter o){
+        throw new NotImplementedYetException(this);
+    }
+
+    public void Model.generate_sync_schema(String m,PrintWriter o){
+        for (ModuleDecl d : getModuleDecls()) {
+            if (generate_sync_schemaStdLib || (! Constants.BUILT_IN_LIBS.contains(d.getName()))) {
+                d.generate_sync_schema(m,o);
+            }
+        }
+
+        for (DeltaDecl d : getDeltaDecls()) {
+            d.generate_sync_schema(m,o);
+        }
+        if (hasProductLine()) {
+            getProductLine().generate_sync_schema(m,o);
+        }
+    }
+
+    public void ModuleDecl.generate_sync_schema(String m,PrintWriter o){
+
+
+        for (Decl decl : getDecls()) {
+            decl.generate_sync_schema(m,o);;
+        }
+
+        if (hasBlock()) {
+            getBlock().generate_sync_schema(m,o);
+        }
+
+        o.flush();
+    }
+
+    public void ProductDecl.generate_sync_schema(String m,PrintWriter o){
+
+    }
+
+    public void Feature.generate_sync_schema(String m,PrintWriter o){
+
+    }
+
+    public void AttrAssignment.generate_sync_schema(String m,PrintWriter o){
+            getValue().generate_sync_schema(m,o);
+             o.println("ATTR Assignment Statement");
+    }
+
+    public void ProductLine.generate_sync_schema(String m,PrintWriter o){
+
+    }
+
+    public void DeltaClause.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public abstract void AppCond.generate_sync_schema(String m,PrintWriter o);
+
+    public void AppCondAnd.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void AppCondOr.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void AppCondNot.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void AppCondFeature.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void Deltaspec.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void Deltaparam.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void DeltaID.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void Block.generate_sync_schema(String m,PrintWriter o) {
+        getStmtList().generate_sync_schema(m,o);
+    }
+
+    public void MainBlock.generate_sync_schema(String m,PrintWriter o) {
+            o.print("main/this");
+            getStmtList().generate_sync_schema("main",o);
+        }
+
+    public void AssertStmt.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void ThrowStmt.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void DieStmt.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void AssignStmt.generate_sync_schema(String m,PrintWriter o) {
+            getValue().generate_sync_schema(m,o);
+           // o.println("Assignment Statement");
+    }
+
+    public void Call.generate_sync_schema(String m,PrintWriter o) {
+        o.print("/");
+                getCallee().generate_sync_schema(m,o);
+                for (PureExp x : getParamList())
+                {
+                    if(!(x.getType().isStringType() || x.getType().isIntType() || x.getType().isFutureType() || x.getType().isBoolType() || x.getType().isFloatType() || x.getType().isUnitType() || x.getType().isRatType() )) {
+                        o.print(",");
+                        o.print(x);
+                    }
+                }
+    }
+    /*
+    public void Call1Exp.generate_sync_schema(String m,PrintWriter o) {
+
+        o.print("/");
+        getCallee().generate_sync_schema(m,o);
+        for (PureExp x : getParamList())
+        {
+            if(!(x.getType().isStringType() || x.getType().isIntType() || x.getType().isFutureType() || x.getType().isBoolType() || x.getType().isFloatType() || x.getType().isUnitType() || x.getType().isRatType() )) {
+                o.print(",");
+                o.print(x);
+            }
+        }
+    }
+    */
+
+    public void AsyncCall1Exp.generate_sync_schema(String m,PrintWriter o) {
+
+            o.print("/");
+            getCallee().generate_sync_schema(m,o);
+            for (PureExp x : getParamList())
+            {
+                if(x.getType().isInterfaceType()) {
+                    o.print(",");
+                    o.print(x);
+                }
+            }
+        }
+
+    public void SyncCall1Exp.generate_sync_schema(String m,PrintWriter o) {
+
+                o.print("/");
+                getCallee().generate_sync_schema(m,o);
+                for (PureExp x : getParamList())
+                {
+                    if(x.getType().isInterfaceType()) {
+                        o.print(",");
+                        o.print(x);
+                    }
+                }
+            }
+
+    public void GetExp.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void AddResStmt.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void HoldExp.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void ReleaseResStmt.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+
+    public void NewExp.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void OriginalCall.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void AwaitStmt.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void AndGuard.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void ClaimGuard.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void DurationGuard.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void ExpGuard.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void CostStmt.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void ExpressionStmt.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void IfStmt.generate_sync_schema(String m,PrintWriter o) {
+        getThen().generate_sync_schema(m,o);
+        if (hasElse()) {
+            getElse().generate_sync_schema(m,o);
+        }
+    }
+
+    public void ReturnStmt.generate_sync_schema(String m,PrintWriter o) {
+    }
+
+    public void SkipStmt.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void SuspendStmt.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void VarDeclStmt.generate_sync_schema(String m,PrintWriter o) {
+        getVarDecl().generate_sync_schema(m,o);
+
+    }
+
+    public void VarDecl.generate_sync_schema(String m,PrintWriter o) {
+        if (hasInitExp()) {
+            //o.println(" Initialization ");
+            //getInitExp().generate_sync_schema(m,o);
+        }
+
+    }
+
+    public void WhileStmt.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void ForeachStmt.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void CaseStmt.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void TryCatchFinallyStmt.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    abstract public void Export.generate_sync_schema(String m,PrintWriter o);
+
+    public void NamedExport.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void Name.generate_sync_schema(String m,PrintWriter o) {
+        //o.print(getName());
+    }
+
+    public void StarExport.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void FromExport.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void NamedImport.generate_sync_schema(String m,PrintWriter o) {
+
+
+    }
+
+    public void StarImport.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void FromImport.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void FunctionDecl.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void PartialFunctionDecl.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void FunctionParamDecl.generate_sync_schema(String m,PrintWriter o) {
+      o.print(getName());
+    }
+
+    public void PartialFunctionDef.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void NamedParFnAppParam.generate_sync_schema(String m,PrintWriter o) {
+        o.print(getName());
+    }
+
+    public void AnonymousFunctionDecl.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+
+
+    public void ParametricFunctionDecl.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+
+
+    public void ParametricPartialFunctionDecl.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void BuiltinFunctionDef.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void ExpFunctionDef.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void DeltaDecl.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void DeltaAccess.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void AddImportModifier.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void AddExportModifier.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void RemoveClassModifier.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void ModifyClassModifier.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void AddFieldModifier.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void RemoveFieldModifier.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void AddInterfaceModifier.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void AddClassModifier.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void DeltaFieldParam.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void DeltaClassParam.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void HasField.generate_sync_schema(String m,PrintWriter o) {
+        getFieldDecl().generate_sync_schema(m,o);
+    }
+
+    public void HasInterface.generate_sync_schema(String m,PrintWriter o) {
+        getInterfaceTypeUse().generate_sync_schema(m,o);
+    }
+
+    public void HasMethod.generate_sync_schema(String m,PrintWriter o) {
+
+        getMethodSig().generate_sync_schema(m,o);
+    }
+
+    public void TypeSynDecl.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void InterfaceDecl.generate_sync_schema(String m,PrintWriter o) {
+
+
+    }
+
+    public void InterfaceDecl1.generate_sync_schema(String m,PrintWriter o) {
+
+
+        }
+
+    public void MethodSig.generate_sync_schema(String m,PrintWriter o) {
+      o.print(m);
+      o.print("/this");
+      for (ParamDecl x : getParamList())
+      {
+        if( x.getType().isInterfaceType())
+        {
+            o.print(",");
+            o.print(x.getName());
+        }
+      //o.print("}");
+       }
+    }
+
+    public void MethodSig1.generate_sync_schema(String m,PrintWriter o) {
+          o.print(m);
+          o.print("/this");
+          for (ParamDecl x : getObjList())
+          {
+            o.print(",");
+            o.print(x.getName());
+          }
+          //o.print("}");
+        }
+
+    public void ClassDecl.generate_sync_schema(String m,PrintWriter o) {
+        List<MethodImpl> methods = getMethodList();
+                if (methods.getNumChild() > 0) {
+                    methods.generate_sync_schema(m,o);
+                }
+    }
+
+    public void ClassDecl1.generate_sync_schema(String m,PrintWriter o) {
+            List<MethodImpl1> methods = getMethodList();
+                    if (methods.getNumChild() > 0) {
+                        methods.generate_sync_schema(m,o);
+                    }
+        }
+
+    public void FieldDecl.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void MethodImpl.generate_sync_schema(String m,PrintWriter o) {
+          String name = getMethodSig().getName();
+          getMethodSig().generate_sync_schema(name,o);
+          getBlock().generate_sync_schema(name,o);
+          o.println();
+    }
+
+    public void MethodImpl1.generate_sync_schema(String m,PrintWriter o) {
+              //o.println("In new style method");
+              String name = getMethodSig1().getName();
+              getMethodSig1().generate_sync_schema(name,o);
+              getBlock().generate_sync_schema(name,o);
+              o.println();
+        }
+
+    public void TypeParameterDecl.generate_sync_schema(String m,PrintWriter o) {
+        o.print(getName());
+    }
+
+    public void DataTypeDecl.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void AddDataTypeModifier.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void ModifyInterfaceModifier.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void AddMethodSigModifier.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void RemoveMethodSigModifier.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+
+
+    public void ParametricDataTypeDecl.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void DataConstructor.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void ConstructorArg.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void UnresolvedTypeUse.generate_sync_schema(String m,PrintWriter o) {
+        // TODO: getAnnotationList().doPrettyPrint(stream, formatter, "");
+        o.print(getName());
+    }
+
+    public void DataTypeUse.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+
+
+    public void ParametricDataTypeUse.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void TypedAnnotation.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void Annotation.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void TypeParameterUse.generate_sync_schema(String m,PrintWriter o) {
+        o.print(getName());
+    }
+
+    public void InterfaceTypeUse.generate_sync_schema(String m,PrintWriter o) {
+        o.print(getName());
+    }
+
+    public void FieldUse.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void VarUse.generate_sync_schema(String m,PrintWriter o) {
+        o.print(getName());
+    }
+
+    public void Binary.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void ConBinary.generate_sync_schema(String m,PrintWriter o) {
+
+        }
+
+    public void AddAddExp.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void SubAddExp.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void DivMultExp.generate_sync_schema(String m,PrintWriter o) {
+    }
+
+    public void ModMultExp.generate_sync_schema(String m,PrintWriter o) {
+    }
+
+    public void MultMultExp.generate_sync_schema(String m,PrintWriter o) {
+    }
+
+    public void AndBoolExp.generate_sync_schema(String m,PrintWriter o) {
+    }
+
+    public void ConjunctionExp.generate_sync_schema(String m,PrintWriter o) {
+        }
+
+    public void OrBoolExp.generate_sync_schema(String m,PrintWriter o) {
+    }
+
+    public void EqExp.generate_sync_schema(String m,PrintWriter o) {
+    }
+
+    public void NotEqExp.generate_sync_schema(String m,PrintWriter o) {
+    }
+
+    public void GTEQExp.generate_sync_schema(String m,PrintWriter o) {
+    }
+
+    public void GTExp.generate_sync_schema(String m,PrintWriter o) {
+    }
+
+    public void LTEQExp.generate_sync_schema(String m,PrintWriter o) {
+    }
+
+    public void LTExp.generate_sync_schema(String m,PrintWriter o) {
+    }
+
+    public void CaseExp.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void ConstructorPattern.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void LiteralPattern.generate_sync_schema(String m,PrintWriter o) {
+        getLiteral().generate_sync_schema(m,o);
+    }
+
+    public void PatternVar.generate_sync_schema(String m,PrintWriter o) {
+        getVar().generate_sync_schema(m,o);
+    }
+
+    public void PatternVarDecl.generate_sync_schema(String m,PrintWriter o) {
+        o.print(getName());
+    }
+
+    public void PatternVarUse.generate_sync_schema(String m,PrintWriter o) {
+        o.print(getName());
+    }
+
+    public void UnderscorePattern.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void DataConstructorExp.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void FnApp.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void ParFnApp.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void IfExp.generate_sync_schema(String m,PrintWriter o) {
+        getThenExp().generate_sync_schema(m,o);
+        getElseExp().generate_sync_schema(m,o);
+    }
+
+    public void LetExp.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void ParamDecl.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void IntLiteral.generate_sync_schema(String m,PrintWriter o) {
+        //o.print(getContent());
+    }
+
+    public void StringLiteral.generate_sync_schema(String m,PrintWriter o) {
+        o.print("\"");
+        for (char c : getContent().toCharArray()) {
+            switch (c) {
+            case '\\': o.print("\\\\");
+                break;
+            case '"': o.print("\\\"");
+                break;
+            case '\t': o.print("\\t");
+                break;
+            case '\n': o.print("\\n");
+                break;
+            case '\r': o.print("\\r");
+                break;
+            default: o.print(c);
+            }
+        }
+        o.print("\"");
+    }
+
+    public void FloatLiteral.generate_sync_schema(String m,PrintWriter o) {
+        o.print(getContent());
+    }
+
+    public void ListLiteral.generate_sync_schema(String m,PrintWriter o) {
+        o.print("[");
+        String interp = "";
+        for (PureExp e : getPureExps()) {
+            o.print(interp);
+            interp = ", ";
+            e.generate_sync_schema(m,o);
+        }
+        o.print("]");
+    }
+
+    public void NullExp.generate_sync_schema(String m,PrintWriter o) {
+        //o.print("null");
+    }
+
+    public void ThisExp.generate_sync_schema(String m,PrintWriter o) {
+        o.print("this");
+    }
+
+    public void DestinyExp.generate_sync_schema(String m,PrintWriter o) {
+        //o.print("destiny");
+    }
+
+    public void MinusExp.generate_sync_schema(String m,PrintWriter o) {
+
+
+    }
+
+    public void NegExp.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+
+    public void TraitDecl.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+    public void TraitUse.generate_sync_schema(String m,PrintWriter o) {
+
+    }
+}
+
+
+

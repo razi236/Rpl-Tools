@@ -1,0 +1,90 @@
+module ABS;
+interface DL
+{
+    Int check();
+}
+class DLD implements DL
+{
+    Int check()
+    {
+        Int i=0;
+        cost(10); // consume 10 times unit
+        return 0;
+    }
+}
+interface IJK
+{
+    Int jkl(ABC a, IJK k);
+    Int lmn(ABC a, IJK k);
+}
+class IJK implements IJK
+{
+    Int jkl(ABC a, IJK k)
+    {
+        Int i=0;
+        /*
+        while(i<10){
+            cost(1);
+            i = i+1;
+        }
+        */
+        // No loops in Rpl (Specially for cost analysis)
+        return 0;
+    }
+    Int lmn(ABC a, IJK k)
+    {
+        Int i=0;
+        return 0;
+    }
+}
+interface ABC
+{
+    Int xyz(ABC a,IJK c,String x);
+    Int efg();
+}
+class ABC implements ABC
+{
+    Int xyz(ABC a,IJK c,String x)
+    {
+        ABC o = new ABC();
+        ABC o1 = new ABC();
+        Int x1 = 0;
+        Fut<Int> f; Fut<Int> f1; Fut<Int> f2; Fut<Int> f3;
+        cost(5);
+
+        // asynchronously invocation of method jkl on object c without any dependency while the deadline is 5 times unit.
+        // 1st parameter is always the name of the object on which method is going to execute.
+        f = !jkl(c,a,c) after dl 5;
+
+        // min(C_jkl,5)
+
+        // after f means the future f should be resolved.
+        // efg will start execution after the complete execution of jkl.
+        f1 = !efg(o) after f dl 3;
+
+        // after f&f1 means both the futures should be resolved.
+        // lmn will start execution after the complete execution of jkl and efg.
+        f2 = !lmn(c,a,c) after f&f1&f2 dl 5;
+        // If SACO do not allow to have await f&f1;
+        //await f?;
+        //await f1?;
+
+        // after f1,f2 means either f1 or f2 should be resolved.
+        f3 = !efg(o1) after f,f1,f2 dl 3;
+        // Check putting False or True in if else part in (static analysis)
+        await f3?;
+        return 0;
+    }
+    Int efg()
+    {
+        return 0;
+    }
+}
+{
+    DL o = new DLD();
+    Fut<Int> f;
+    cost(5);
+    f = !check(o) after dl 21;
+    await f?;
+    println("RplTools");
+}

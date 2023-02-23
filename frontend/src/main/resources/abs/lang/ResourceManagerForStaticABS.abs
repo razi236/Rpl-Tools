@@ -1,0 +1,88 @@
+// Resource Management
+// Translation fetches resources from the database and store them in a resource map in the ABS program.
+// The following code helps to add, acquire and release the resources.
+
+data Availability = Free | Busy;
+
+interface ResourceManager {
+    List<Int> addRes(List<Set<Quality>> newResources);
+    List<Int> holdRes(List<Set<Quality>> wantedResources);
+    Unit releaseRes(List<Int> ids);
+    Unit print();
+}
+
+class ResourceManager implements ResourceManager {
+    Map<Int, Pair<Availability, Set<Quality>>> resources = map[];
+    Int resource_counter = 0;
+
+    Unit print() {
+        println(toString(resources));
+    }
+    List<Int> addRes(List<Set<Quality>> newResources) {
+        List<Int> result = list[];
+        foreach (r in newResources) {
+            resource_counter = resource_counter + 1;
+            resources = insert(resources, Pair(resource_counter, Pair(Free, r)));
+            result = Cons(resource_counter, result);
+        }
+        //println(toString(resources));
+        return result;
+    }
+
+    List<Int> holdRes(List<Set<Quality>> wantedResources) {
+        List<Int> result = list[];
+        Map<Int, Pair<Availability, Set<Quality>>> lr = this.resources;
+        while (result == Nil) {
+            foreach (q in wantedResources) {
+                Bool found = False;
+                foreach (entry in entries(lr)) {
+                    if (!found
+                        && fst(snd(entry)) == Free
+                        && isSubset(q, snd(snd(entry))))
+                    {
+                        found = True;
+                        result = Cons(fst(entry), result);
+                        lr = put(lr, fst(entry), Pair(Busy, snd(snd(entry))));
+                    }
+                }
+            }
+            if (length(result) != length(wantedResources)) {
+                // we did not find all needed resources
+                println(`hold retrying: Resources = $this.resources$ We want $wantedResources$`);
+                result = Nil;
+                lr = this.resources;
+                await this.resources != lr;
+                lr = this.resources;
+            } else {
+                // we're happy
+                /*
+                println("***********************************************");
+                println("We have acquired all the requested resources :)");
+                println("***********************************************");
+                */
+                this.resources = lr;
+            }
+        }
+
+        //println(toString(this.resources));
+        return result;
+    }
+
+    Unit releaseRes(List<Int> ids) {
+        Set<Int> all_ids = keys(resources);
+        foreach (id in ids) {
+            if (contains(all_ids, id)) {
+                Pair<Availability, Set<Quality>> entry = lookupUnsafe(resources, id);
+                resources = put(resources, id, Pair(Free, snd(entry)));
+            }
+        }
+        /*
+        println("***********************************************");
+        println("We have released all the acquired resources :)");
+        println("***********************************************");
+        */
+
+        //println(toString(this.resources));
+    }
+}
+

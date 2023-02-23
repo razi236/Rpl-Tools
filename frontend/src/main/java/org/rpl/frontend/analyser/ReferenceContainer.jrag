@@ -1,0 +1,10 @@
+import org.rpl.common.*;
+import org.rpl.frontend.ast.*;
+
+import org.rpl.frontend.typechecker.Type;
+import org.rpl.frontend.typechecker.DataTypeType;
+
+aspect ReferenceContainer {
+
+    syn lazy boolean VarOrFieldDecl.hasReferences() = getType().hasReferences();
+}

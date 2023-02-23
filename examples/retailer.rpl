@@ -1,0 +1,104 @@
+module ScpExample;
+interface Retailer
+{
+    Int sale(Supplier sp, Courier cr, Int p);
+}
+class Retailer implements Retailer
+{
+    Int sale(Supplier sp, Courier cr, Int p)
+    {
+        Fut<Int> f1; Fut<Int> f2; Fut<Int> f3;
+        WareHouse wh = new WareHouse();
+        Bool found = False;
+        Int k = 10;
+        cost(k);
+        //found = inWareHouse(wh,p) after dl 1;
+        if(!found) {
+           f1 = !pack(wh,p) after dl 5;
+           await f1?;
+        }
+        else {
+            f2 = !supply(sp,cr,p) after dl 15;
+            await f2?;
+        }
+        f3 = !deliver(cr,p) after dl 1;
+        await f3?;
+        return 0;
+    }
+}
+interface WareHouse
+{
+    Bool inWareHouse(Int p);
+    Int pack(Int p);
+}
+class WareHouse implements WareHouse
+{
+    List<Int> products = list[1,2,3,4,5,6,7,8,9,10];
+    Bool inWareHouse(Int p)
+    {
+        Bool found = False;
+        foreach(x in products)
+        {
+            if(x == p)
+                found = True;
+        }
+        return found;
+    }
+    Int pack(Int p)
+    {
+        Int k1 = random(8);
+        cost(k1);   // Packing Time
+        return 0;
+    }
+}
+interface Supplier
+{
+    Int supply(Courier cr, Int p);
+}
+class Supplier implements Supplier
+{
+    Int supply(Courier cr, Int p)
+    {
+        Fut<Int> f4;
+        Int k2 = random(8);
+        cost(k2);   // Packing Time
+        f4 = !deliver(cr,p) after dl 10;
+        await f4?;
+        return 0;
+    }
+}
+
+interface Courier
+{
+    Int deliver(Int p);
+}
+class Courier implements Courier
+{
+    Int deliver(Int p)
+    {
+        List<Int> rid = list[];
+        rid = hold(list[set[VanDriver, Efficiency(5)],set[DeliveryVan, Efficiency(1500)]]);
+        Int k3 =  random(3);
+        cost(k3);
+        rel(rid);
+        println("Delivered :)");
+        return 0;
+    }
+}
+{
+    Retailer rt = new Retailer();
+    Supplier sp = new Supplier();
+    Courier cr = new Courier();
+    Fut<Int> f;
+    Int k1 = random(10);
+    Int k2 = random(10);
+    cost(k1);
+    f = !sale(rt,sp,cr,5) after dl 1000;
+    cost(k2);
+    await f?;
+}
+
+
+
+
+

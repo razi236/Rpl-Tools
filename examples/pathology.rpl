@@ -1,0 +1,215 @@
+module Pathology;
+interface Pathology
+{
+    Int reg(Grossing g, Processing pr, Embedding em, Sectioning sc, Staining st, MicroscopicAnalysis ma);
+}
+class Pathology implements Pathology
+{
+    List<Triple<Int,Int,String>> processingTray = list[];
+    Int caseNum = 1;
+    Int reg(Grossing g, Processing pr, Embedding em, Sectioning sc, Staining st, MicroscopicAnalysis ma)
+    {
+        Pair<Int,String> newSpecimen = Pair(caseNum,"Test"+toString(caseNum));
+        //cost(1);
+        Fut<Int> f;
+        f = !gross(g,pr,em,sc,st,ma,newSpecimen) after dl 110;
+        println(`Time: $now()$ : case $caseNum$`);
+        caseNum = caseNum+1;
+        await f?;
+        return 0;
+    }
+}
+interface Grossing
+{
+    Int gross(Processing pr, Embedding em, Sectioning sc, Staining st, MicroscopicAnalysis ma, Pair<Int,String> x);
+}
+class Grossing implements Grossing
+{
+    List<Triple<Int,Int,String>> processingTray = list[];
+    Int gross(Processing pr, Embedding em, Sectioning sc, Staining st, MicroscopicAnalysis ma, Pair<Int,String> x)
+    {
+        Int i = 1;
+        List<Int> rid = list[];
+        rid = hold(list[set[BioTechnician, Efficiency(2)]]);
+        cost(5);
+        List<Fut<Int>> futList = list[];
+        while(i<=3)
+        {
+            Triple<Int, Int, String> block = Triple(fst(x),i,snd(x));
+            if(length(processingTray)<3)
+                processingTray = appendright(processingTray,block);
+                //println("Processing Tray;");
+                //println(toString(processingTray));
+            if(length(processingTray)==3){
+                Fut<Int> f;
+                f = !process(pr,em,sc,st,ma,processingTray) after dl 100;
+                futList = appendright(futList,f);
+                processingTray = Nil;
+            }
+            i = i+1;
+        }
+        rel(rid);
+        while(!isEmpty(futList)){
+            Fut<Int> f = head(futList);
+            futList = tail(futList);
+            await f?;
+        }
+        return 0;
+    }
+}
+interface Processing
+{
+    Int process(Embedding em,Sectioning sc,Staining st,MicroscopicAnalysis ma,List<Triple<Int,Int,String>> processingTray);
+}
+class Processing implements Processing
+{
+    List<Triple<Int,Int,String>> blockTray = list[];
+    Int process(Embedding em,Sectioning sc,Staining st,MicroscopicAnalysis ma,List<Triple<Int,Int,String>> processingTray)
+    {
+        //blockTray = Nil;
+        List<Int> rid = list[];
+        rid = hold(list[set[ProcessingMachine, Efficiency(10)]]);
+        // Processing
+        cost(5);
+        blockTray = concatenate(blockTray,processingTray);
+        //println("Block Tray:");
+        //println(toString(blockTray));
+        rel(rid);
+        List<Fut<Int>> futList = list[];
+        while (!isEmpty(blockTray)){
+            Fut<Int> f;
+            f = !embed(em,sc,st,ma,head(blockTray)) after dl 100; // Manual Embedding
+            futList = appendright(futList,f);
+            blockTray = tail(blockTray);
+        }
+        while(!isEmpty(futList)){
+            Fut<Int> f = head(futList);
+            futList = tail(futList);
+            await f?;
+        }
+        return 0;
+    }
+}
+interface Embedding
+{
+    // Manual Embedding
+    Int embed(Sectioning sc,Staining st,MicroscopicAnalysis ma,Triple<Int,Int,String> block);
+}
+class Embedding implements Embedding
+{
+    Int embed(Sectioning sc,Staining st,MicroscopicAnalysis ma,Triple<Int,Int,String> block)
+    {
+        List<Int> rid = list[];
+        rid = hold(list[set[BioTechnician, Efficiency(2)]]);
+        cost(5);
+        rel(rid);
+        Fut<Int> f;
+        f = !section(sc,st,ma,block) after dl 100;
+        await f?;
+        return 0;
+    }
+}
+interface Sectioning
+{
+    Int section(Staining st,MicroscopicAnalysis ma,Triple<Int,Int,String> block);
+}
+class Sectioning implements Sectioning
+{
+    List<Triple<Int,Int,String>> slideTray = list[];
+    Int section(Staining st,MicroscopicAnalysis ma,Triple<Int,Int,String> block){
+        List<Int> rid = list[];
+        rid = hold(list[set[BioTechnician, Efficiency(2)]]);
+        //cost(5);
+        rel(rid);
+        if(length(slideTray)<3)
+            slideTray = appendright(slideTray,block);
+            //println(toString(slideTray));
+        if(length(slideTray)==3){
+            Fut<Int> f;
+            f = !stain(st,ma,slideTray) after dl 100;
+            slideTray = Nil;
+            await f?;
+        }
+        return 0;
+    }
+}
+interface Staining
+{
+    Int stain(MicroscopicAnalysis ma,List<Triple<Int,Int,String>> slideTray);
+}
+class Staining implements Staining
+{
+    Map<Int,List<Pair<Int,String>>> specimenMap = map[];
+    Int stain(MicroscopicAnalysis ma,List<Triple<Int,Int,String>> slideTray){
+        List<Int> rid = list[];
+        rid = hold(list[set[StainingMachine, Efficiency(5)]]);
+        cost(5);
+        rel(rid);
+        foreach(x in slideTray){
+            List<Pair<Int,String>> l = lookupDefault(specimenMap,fstT(x),list[]);
+            specimenMap = put(specimenMap,fstT(x),appendright(l,Pair(sndT(x),trdT(x))));
+        }
+        List<Fut<Int>> futList = list[];
+        //println(toString(specimenMap));
+        foreach(entry in entries(specimenMap)){
+            if(length(snd(entry))==3){
+                Fut<Int> f;
+                f = !analyse(ma,fst(entry),snd(entry)) after dl 100;
+                futList = appendright(futList,f);
+                specimenMap = removeKey(specimenMap,fst(entry));
+                await f?;
+            }
+        }
+        while(!isEmpty(futList)){
+            Fut<Int> f = head(futList);
+            futList = tail(futList);
+            await f?;
+        }
+        //println(toString(specimenMap));
+        return 0;
+    }
+
+}
+interface MicroscopicAnalysis
+{
+    Int analyse(Int case_id,List<Pair<Int,String>> slides);
+}
+class MicroscopicAnalysis implements MicroscopicAnalysis
+{
+    Int analyse(Int case_id,List<Pair<Int,String>> slides)
+    {
+        println(`Time: $now()$`);
+        println(toString(case_id)+ "->" +toString(slides));
+        List<Int> rid = list[];
+        rid = hold(list[set[Pathologist, Efficiency(2)]]);
+        cost(10);
+        rel(rid);
+        return 0;
+    }
+}
+
+{
+    Pathology p = new Pathology();
+    Grossing g = new Grossing();
+    Processing pr = new Processing();
+    Embedding em = new Embedding();
+    Sectioning sc = new Sectioning();
+    Staining st = new Staining();
+    MicroscopicAnalysis ma = new MicroscopicAnalysis();
+    //add(list[set[BioTechnician, Efficiency(2)],set[BioTechnician, Efficiency(2)],set[BioTechnician, Efficiency(2)],set[BioTechnician, Efficiency(2)],set[Pathologist, Efficiency(2)],set[Pathologist, Efficiency(2)],set[BioTechnician, Efficiency(2)],set[ProcessingMachine, Efficiency(10)],set[StainingMachine, Efficiency(5)]]);
+    List<Fut<Int>> futList = list[];
+    Int i = 0;
+    Int k1 = random(10);
+    Int k2 = random(10);
+    cost(k1);
+    Fut<Int> f1;
+    f1 = !reg(p,g,pr,em,sc,st,ma) after dl 150;
+    cost(k2);
+    Fut<Int> f2;
+    f2 = !reg(p,g,pr,em,sc,st,ma) after dl 150;
+    Fut<Int> f3;
+    f3 = !reg(p,g,pr,em,sc,st,ma) after dl 150;
+    await f1?;
+    await f2?;
+    await f3?;
+}

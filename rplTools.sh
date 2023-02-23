@@ -14,6 +14,8 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
       read file
       start=`echo $(($(gdate +%s%N)/1000000))`
       frontend/bin/absc -s ./examples/$file
+      abstools/frontend/bin/absc --erlang RABS.abs
+      gen/erl/run
       end=`echo $(($(gdate +%s%N)/1000000))`
       echo Execution time was `expr $end - $start` mili seconds.
     }
@@ -45,6 +47,8 @@ else
       read file
       start=`echo $(date +%s)`
       frontend/bin/absc -s ./examples/$file
+      abstools/frontend/bin/absc --erlang RABS.abs
+      gen/erl/run
       end=`echo $($(date +%s))`
       echo Execution time was `expr $end - $start` seconds.
     }
