@@ -1,0 +1,30 @@
+*************************************************************
+efg: I : { }
+Psi : { }
+ta :null
+t :null
+*************************************************************
+xyz: I : { f1 -> {o} }
+Psi : { {o} -> max(max(IntLiteral(5)+c_jkl)+max(c_efg,0),max(max(max(max(max(max(IntLiteral(5)+c_jkl)+max(null),max(IntLiteral(5)+c_jkl)+max(c_efg,0)+max(null)))+max(null)+c_lmn,max(IntLiteral(5)+c_jkl)+max(c_efg,0)+max(null)+c_lmn),max(max(max(IntLiteral(5)+c_jkl)+max(null),max(IntLiteral(5)+c_jkl)+max(c_efg,0)+max(null)))max(null)+c_lmn,max(max(max(IntLiteral(5)+c_jkl)+max(null),max(IntLiteral(5)+c_jkl)+max(c_efg,0)+max(null)))+max(null)+c_lmn)+max(null,null,null),max(max(max(max(max(IntLiteral(5)+c_jkl)+max(null),max(IntLiteral(5)+c_jkl)+max(c_efg,0)+max(null)))+max(null)+c_lmn,max(IntLiteral(5)+c_jkl)+max(c_efg,0)+max(null)+c_lmn),max(max(max(IntLiteral(5)+c_jkl)+max(null),max(IntLiteral(5)+c_jkl)+max(c_efg,0)+max(null)))max(null)+c_lmn,max(max(max(IntLiteral(5)+c_jkl)+max(null),max(IntLiteral(5)+c_jkl)+max(c_efg,0)+max(null)))+max(null)+c_lmn)+max(c_efg,0))) }
+ta :null
+t :max(max(max(max(max(max(IntLiteral(5)+c_jkl)+max(null),max(IntLiteral(5)+c_jkl)+max(c_efg,0)+max(null)))+max(null)+c_lmn,max(IntLiteral(5)+c_jkl)+max(c_efg,0)+max(null)+c_lmn),max(max(max(IntLiteral(5)+c_jkl)+max(null),max(IntLiteral(5)+c_jkl)+max(c_efg,0)+max(null)))max(null)+c_lmn,max(max(max(IntLiteral(5)+c_jkl)+max(null),max(IntLiteral(5)+c_jkl)+max(c_efg,0)+max(null)))+max(null)+c_lmn)+max(null,null,null),max(max(max(max(max(IntLiteral(5)+c_jkl)+max(null),max(IntLiteral(5)+c_jkl)+max(c_efg,0)+max(null)))+max(null)+c_lmn,max(IntLiteral(5)+c_jkl)+max(c_efg,0)+max(null)+c_lmn),max(max(max(IntLiteral(5)+c_jkl)+max(null),max(IntLiteral(5)+c_jkl)+max(c_efg,0)+max(null)))max(null)+c_lmn,max(max(max(IntLiteral(5)+c_jkl)+max(null),max(IntLiteral(5)+c_jkl)+max(c_efg,0)+max(null)))+max(null)+c_lmn)+max(c_efg,0))
+*************************************************************
+jkl: I : { }
+Psi : { }
+ta :null
+t :null
+*************************************************************
+main: I : { }
+Psi : { }
+ta :null
+t :max(IntLiteral(5),IntLiteral(5)+max(c_check,0))
+*************************************************************
+check: I : { }
+Psi : { }
+ta :null
+t :IntLiteral(10)
+*************************************************************
+lmn: I : { }
+Psi : { }
+ta :null
+t :null

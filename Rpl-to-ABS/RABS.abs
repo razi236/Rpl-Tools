@@ -1,0 +1,255 @@
+module ABS.ResourceManager;
+import * from ABS.StdLib;
+export *;
+data Quality = Efficiency(Int) | Pathologist | BioTechnician | ProcessingMachine | EmbeddingMachine | StainingMachine | Receptionist | VanDriver | DeliveryVan | HeadWaiter | RunnerWaiter | Cook | CookAssistant;
+
+// Resource Management
+// Translation fetches resources from the database and store them in a resource map in the ABS program.
+// The following code helps to add, acquire and release the resources.
+
+data Availability = Free | Busy;
+
+interface ResourceManager {
+    List<Int> addRes(List<Set<Quality>> newResources);
+    List<Int> holdRes(List<Set<Quality>> wantedResources);
+    Unit releaseRes(List<Int> ids);
+    Unit print();
+}
+
+class ResourceManager implements ResourceManager {
+    Map<Int, Pair<Availability, Set<Quality>>> resources = map[];
+    Int resource_counter = 0;
+
+    Unit print() {
+        println(toString(resources));
+    }
+    List<Int> addRes(List<Set<Quality>> newResources) {
+        List<Int> result = list[];
+        foreach (r in newResources) {
+            resource_counter = resource_counter + 1;
+            resources = insert(resources, Pair(resource_counter, Pair(Free, r)));
+            result = Cons(resource_counter, result);
+        }
+        //println(toString(resources));
+        return result;
+    }
+
+    List<Int> holdRes(List<Set<Quality>> wantedResources) {
+        List<Int> result = list[];
+        Map<Int, Pair<Availability, Set<Quality>>> lr = this.resources;
+        while (result == Nil) {
+            foreach (q in wantedResources) {
+                Bool found = False;
+                foreach (entry in entries(lr)) {
+                    if (!found
+                        && fst(snd(entry)) == Free
+                        && isSubset(q, snd(snd(entry))))
+                    {
+                        found = True;
+                        result = Cons(fst(entry), result);
+                        lr = put(lr, fst(entry), Pair(Busy, snd(snd(entry))));
+                    }
+                }
+            }
+            if (length(result) != length(wantedResources)) {
+                // we did not find all needed resources
+                println(`hold retrying: Resources = $this.resources$ We want $wantedResources$`);
+                result = Nil;
+                lr = this.resources;
+                await this.resources != lr;
+                lr = this.resources;
+            } else {
+                // we're happy
+                /*
+                println("***********************************************");
+                println("We have acquired all the requested resources :)");
+                println("***********************************************");
+                */
+                this.resources = lr;
+            }
+        }
+
+        //println(toString(this.resources));
+        return result;
+    }
+
+    Unit releaseRes(List<Int> ids) {
+        Set<Int> all_ids = keys(resources);
+        foreach (id in ids) {
+            if (contains(all_ids, id)) {
+                Pair<Availability, Set<Quality>> entry = lookupUnsafe(resources, id);
+                resources = put(resources, id, Pair(Free, snd(entry)));
+            }
+        }
+        /*
+        println("***********************************************");
+        println("We have released all the acquired resources :)");
+        println("***********************************************");
+        */
+
+        //println(toString(this.resources));
+    }
+}
+
+// ABS does not support disjunction between future return tests (await f1? || await f2?)
+// The following code is a syntactic sugar for the disjunction between the return tests.
+// The code is not generic, supports only futures of integer type (Fut<Int>).
+
+interface AwaitFut
+{
+    Unit awaitFut(List<Fut<Int>> fut);
+    Bool checkFut();
+}
+class AwaitFut implements AwaitFut
+{
+    Bool resolved = False;
+    Unit awaitFut(List<Fut<Int>> fut)
+    {
+        try {
+            if(!isEmpty(fut)){
+               foreach(f in fut)
+               {
+                   await f?;
+               }
+               resolved = True;
+               println("Future Resolved:)");
+            }
+        } catch {
+            NullPointerException  => println(`Future is not initialized`);
+        }
+    }
+    Bool checkFut()
+    {
+        return resolved;
+    }
+}
+module ABS;
+import * from ABS.ResourceManager;
+
+import * from ABS.StdLib;
+
+interface DL {
+  Int check(ResourceManager rm);}
+
+class DLD implements DL {
+  
+  Int check(ResourceManager rm){
+    Int i = 0;duration(10, 10);try {
+    Duration d = deadline();
+    Rat r = durationValue(d);
+    assert r > 0;
+    } catch {
+    AssertionFailException => println(`The method "check" have missed the deadline.`);
+    }
+    return 0;
+  }
+  }
+
+interface IJK {
+  Int jkl(ResourceManager rm,ABC a, IJK k);
+  Int lmn(ResourceManager rm,ABC a, IJK k);}
+
+class IJK implements IJK {
+  
+  Int jkl(ResourceManager rm,ABC a, IJK k){
+    Int i = 0;try {
+    Duration d = deadline();
+    Rat r = durationValue(d);
+    assert r > 0;
+    } catch {
+    AssertionFailException => println(`The method "jkl" have missed the deadline.`);
+    }
+    return 0;
+  }
+  Int lmn(ResourceManager rm,ABC a, IJK k){
+    Int i = 0;try {
+    Duration d = deadline();
+    Rat r = durationValue(d);
+    assert r > 0;
+    } catch {
+    AssertionFailException => println(`The method "lmn" have missed the deadline.`);
+    }
+    return 0;
+  }
+  }
+
+interface ABC {
+  Int xyz(ResourceManager rm,ABC a, IJK c, String x);
+  Int efg(ResourceManager rm);}
+
+class ABC implements ABC {
+  
+  Int xyz(ResourceManager rm,ABC a, IJK c, String x){
+    ABC o = new ABC();ABC o1 = new ABC();Int x1 = 0;Fut<Int> f;Fut<Int> f1;Fut<Int> f2;Fut<Int> f3;duration(5, 5);[Deadline: Duration(5)]    f = c!jkl(rm,a, c);
+    {
+    Bool b1 = False;
+    AwaitFut a1 = new AwaitFut();
+    a1!awaitFut(list[f]);
+    while(!(b1))
+    {
+      b1 = await a1!checkFut();
+      await duration(1);
+    }
+    }
+    [Deadline: Duration(3)]    f1 = o!efg(rm);
+    {
+    Bool b1 = False;
+    AwaitFut a1 = new AwaitFut();
+    a1!awaitFut(list[f,f1,f2]);
+    while(!(b1))
+    {
+      b1 = await a1!checkFut();
+      await duration(1);
+    }
+    }
+    [Deadline: Duration(5)]    f2 = c!lmn(rm,a, c);
+    {
+    Bool b1 = False;
+    AwaitFut a1 = new AwaitFut();
+    a1!awaitFut(list[f]);
+        Bool b2 = False;
+    AwaitFut a2 = new AwaitFut();
+    a2!awaitFut(list[f1]);
+        Bool b3 = False;
+    AwaitFut a3 = new AwaitFut();
+    a3!awaitFut(list[f2]);
+    while(!(b1 || b2 || b3))
+    {
+      b1 = await a1!checkFut();
+      b2 = await a2!checkFut();
+      b3 = await a3!checkFut();
+      await duration(1);
+    }
+    }
+    [Deadline: Duration(3)]    f3 = o1!efg(rm);await f3?;try {
+    Duration d = deadline();
+    Rat r = durationValue(d);
+    assert r > 0;
+    } catch {
+    AssertionFailException => println(`The method "xyz" have missed the deadline.`);
+    }
+    return 0;
+  }
+  Int efg(ResourceManager rm){
+    try {
+    Duration d = deadline();
+    Rat r = durationValue(d);
+    assert r > 0;
+    } catch {
+    AssertionFailException => println(`The method "efg" have missed the deadline.`);
+    }
+    return 0;
+  }
+  }
+
+
+{
+  ResourceManager rm = new ResourceManager();
+  await rm!addRes(list[set[Pathologist, Efficiency(3)], set[BioTechnician, Efficiency(5)], set[BioTechnician, Efficiency(3)], set[BioTechnician, Efficiency(10)], set[VanDriver, Efficiency(5)], set[DeliveryVan, Efficiency(1500)], set[BioTechnician, Efficiency(2)], set[BioTechnician, Efficiency(2)], set[BioTechnician, Efficiency(2)], set[BioTechnician, Efficiency(2)], set[ProcessingMachine, Efficiency(10)], set[ProcessingMachine, Efficiency(10)], set[StainingMachine, Efficiency(5)], set[StainingMachine, Efficiency(5)], set[Pathologist, Efficiency(2)], set[HeadWaiter, Efficiency(2)], set[RunnerWaiter, Efficiency(1)], set[RunnerWaiter, Efficiency(1)], set[Cook, Efficiency(5)], set[CookAssistant, Efficiency(1)], set[CookAssistant, Efficiency(1)], set[CookAssistant, Efficiency(1)], set[Cook, Efficiency(3)]]);
+  DL o = new DLD();
+  Fut<Int> f;
+  duration(5, 5);
+  [Deadline: Duration(21)]  f = o!check(rm);
+  await f?;
+  println("RplTools");
+}
