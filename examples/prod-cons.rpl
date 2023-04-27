@@ -30,10 +30,12 @@ class Consumer implements Consumer {
     Int k2 = random(10);
     cost(k1);
     f1 = !p(pr,10) after dl 15;
-    f2 = !p(pr,10) after f1 dl 15;
+    await f1?;
+    //f2 = !p(pr,10) after dl 15;
     cost(k2);
+    //await f2?;
     f3 = !c(cr,5) after dl 10;
-    f4 = !c(cr,5) after dl f2 10;
+    //f4 = !c(cr,5) after dl 10;
     await f3?;
-    await f4?;
+    //await f4?;
 }
