@@ -1,0 +1,298 @@
+module Pathology_Workflow;
+
+// Priority
+// CITO => 1
+// Pakkeforløp => 2
+// Regular => 3
+
+data Case = Case(Int case_ID, Int sub_ID, String case_Type, Int complexity, Int priority, String patho_team, Int no_of_containers);
+
+interface Lists
+{
+    Unit setProcessingList(List<Case> l);
+    List<Case> checkProcessingList();
+    Case getProcessingList();
+    Unit setBlockList(List<Case> l);
+    List<Case> checkBlockList();
+    Case getBlockList();
+}
+class Lists implements Lists
+{
+    List<Case> processingTray = list[];
+    List<Case> blockTray = list[];
+    Unit setProcessingList(List<Case> l)
+    {
+        processingTray = concatenate(processingTray,l);
+    }
+    List<Case> checkProcessingList()
+    {
+        return processingTray;
+    }
+    Unit setBlockList(List<Case> l)
+    {
+        blockTray = concatenate(blockTray,l);
+    }
+    List<Case> checkBlockList()
+    {
+        return blockTray;
+    }
+    Case getProcessingList()
+    {
+        Case c = head(processingTray);
+        processingTray = tail(processingTray);
+        return c;
+    }
+    Case getBlockList()
+    {
+        Case c = head(blockTray);
+        blockTray = tail(blockTray);
+        return c;
+    }
+
+}
+interface Pathology
+{
+    Unit start(Lists l, List<Case> cl);
+    Unit register_case(Case c); // Register cases as a priority queue
+    List<Case> get_case_list();
+}
+
+class Pathology implements Pathology
+{
+    List<Case> case_list = list[];
+    Unit start(Lists l, List<Case> cl)
+    {
+        Grossing g = new Grossing();
+        Processing p = new Processing();
+        Embedding e = new Embedding();
+        Sectioning s = new Sectioning();
+        Staining st = new Staining();
+        MicroscopicAnalysis ma = new MicroscopicAnalysis();
+        foreach(x in cl)
+        {
+            register_case(this,x) after dl 5;
+            Fut<Unit> f;
+            f = !gross(g,l,x) after dl 5;
+            await f?;
+            Fut<List<Case>> f1;
+            List<Case> l1 = list[];
+            f1 = !checkProcessingList(l) after dl 5;
+            l1 = f1.get;
+            println(toString(l1));
+            if(length(l1)>=3)
+            {
+
+                Int i = 0;
+                List<Case> l2 = list[];
+                while(i<3)
+                {
+                    //println("gettin val");
+                     Fut<Case> f2;
+                     f2 = !getProcessingList(l) after dl 5;
+                     Case c = f2.get;
+                     l2 = appendright(l2,c);
+                     i = i+1;
+                }
+                //println(toString(l2));
+                Fut<Unit> f2;
+                f2 = !process(p,l,l2) after dl 5;
+                await f2?;
+                Fut<List<Case>> f3;
+                List<Case> l3 = list[];
+                f3 = !checkBlockList(l) after dl 5;
+                l3 = f3.get;
+                println(toString(l3));
+                foreach(y in l3)
+                {
+                    Fut<Unit> f4;
+                    f4 = !embed(e,l,y) after dl 5;
+                    await f4?;
+                    f4 = !section(s,l,y) after dl 5;
+                    await f4?;
+                    f4 = !stain(st,l,y) after dl 5;
+                    await f4?;
+                    f4 = !analyse(ma,l,y) after dl 5;
+                    await f4?;
+                }
+
+            }
+        }
+    }
+    Unit register_case(Case c)
+    {
+        if(isEmpty(case_list))
+        {
+            case_list = appendright (case_list, c);
+        }
+        else
+        {
+            Int i = 0;
+            List<Case> left = list[];
+            List<Case> right = list[];
+            List<Case> mid = list[];
+            Bool flag = True;
+            while (i < length(case_list))
+            {
+                if(priority(nth(case_list,i)) <= priority(c))
+                {
+                    left = appendright (left,nth(case_list,i));
+                }
+                else
+                {
+                    while(i < length(case_list))
+                    {
+                        right = appendright (right,nth(case_list,i));
+                        i = i + 1;
+                    }
+                    mid = appendright (mid,c);
+                    case_list = concatenate(left,concatenate(mid,right));
+                    flag = False;
+                }
+                i = i + 1;
+            }
+            if (flag == True)
+            {
+                case_list = appendright (left,c);
+            }
+        }
+    }
+    List<Case> get_case_list()
+    {
+        return case_list;
+    }
+}
+
+interface Grossing
+{
+    Unit gross(Lists l,Case c);
+}
+class Grossing implements Grossing
+{
+    List<Case> tray = list[];
+    Unit gross(Lists l, Case c)
+    {
+        Int i = 1;
+        tray = Nil;
+        List<Int> rid = list[];
+        rid = hold(list[set[BioTechnician, Efficiency(2)]]); // it should be hard coded
+        Rat time = random(10)/complexity(c);
+        cost(truncate(time));
+        //println(`Time: $now()$`);
+        tray = appendright (tray,c);
+        while(i<no_of_containers(c))
+        {
+            Case c1 = c;
+            i = i + 1;
+            tray = appendright (tray,c1);
+        }
+        rel(rid);
+        Fut<Unit> f;
+        //println(toString(tray));
+        f = !setProcessingList(l,tray) after dl 5;
+        f.get;
+    }
+}
+interface Processing
+{
+    Unit process(Lists l, List<Case> c);
+}
+class Processing implements Processing
+{
+    Unit process(Lists l, List<Case> cl)
+    {
+        List<Int> rid = list[];
+        rid = hold(list[set[ProcessingMachine, Efficiency(10)]]);
+        // Processing
+        cost(50); // Constant time taken by processing machine
+        rel(rid);
+        Fut<Unit> f;
+        //println(toString(tray));
+        f = !setBlockList(l,cl) after dl 5;
+        f.get;
+    }
+}
+interface Embedding
+{
+    // Manual Embedding
+    Unit embed(Lists l, Case c);
+}
+class Embedding implements Embedding
+{
+    Unit embed(Lists l, Case c)
+    {
+        List<Int> rid = list[];
+        rid = hold(list[set[BioTechnician, Efficiency(2)]]);
+        Rat time = random(10)/complexity(c);
+        cost(truncate(time));
+        //println("Embedding");
+        rel(rid);
+    }
+}
+interface Sectioning
+{
+    Unit section(Lists l, Case c);
+}
+class Sectioning implements Sectioning
+{
+    Unit section(Lists l, Case c)
+    {
+        List<Int> rid = list[];
+        rid = hold(list[set[BioTechnician, Efficiency(2)]]);
+        Rat time = random(10)/complexity(c);
+        cost(truncate(time));
+        rel(rid);
+    }
+}
+interface Staining
+{
+    Unit stain(Lists l, Case c);
+}
+class Staining implements Staining
+{
+    Unit stain(Lists l, Case c)
+    {
+        List<Int> rid = list[];
+        rid = hold(list[set[BioTechnician, Efficiency(2)]]);
+        Rat time = random(10)/complexity(c);
+        cost(truncate(time));
+        rel(rid);
+    }
+}
+interface MicroscopicAnalysis
+{
+    Unit analyse(Lists l, Case c);
+}
+class MicroscopicAnalysis implements MicroscopicAnalysis
+{
+    Unit analyse(Lists l, Case c)
+    {
+        List<Int> rid = list[];
+        rid = hold(list[set[Pathologist, Efficiency(2)]]);
+        Rat time = random(10)/complexity(c);
+        cost(truncate(time));
+        rel(rid);
+    }
+}
+{
+    Case c = Case(123,0,"Blood Sample",2,3,"Gyno",1);
+    Case c1 = Case(345,0,"Blood Sample",3,3,"Gyno",1);
+    Case c2 = Case(678,0,"Blood Sample",4,2,"Gyno",1);
+    Case c3 = Case(345,0,"Blood Sample",3,3,"Gyno",1);
+    Case c4 = Case(678,0,"Blood Sample",4,2,"Gyno",1);
+    Case c5 = Case(123,0,"Blood Sample",2,3,"Gyno",1);
+    Case c6 = Case(345,0,"Blood Sample",3,3,"Gyno",1);
+    Case c7 = Case(678,0,"Blood Sample",4,2,"Gyno",1);
+    Case c8 = Case(123,0,"Blood Sample",2,3,"Gyno",1);
+    Case c9 = Case(345,0,"Blood Sample",3,3,"Gyno",1);
+    Case c10 = Case(678,0,"Blood Sample",4,2,"Gyno",1);
+    Case c11 = Case(123,0,"Blood Sample",2,3,"Gyno",1);
+    Case c12 = Case(345,0,"Blood Sample",3,3,"Gyno",1);
+    Case c13 = Case(678,0,"Blood Sample",4,2,"Gyno",1);
+    Pathology p = new Pathology();
+    Lists l = new Lists();
+    List<Case> cases = list[c,c1,c2,c3,c4,c5];
+    Fut<Unit> f;
+    f = !start(p,l,cases) after dl 500;
+    await f?;
+    println(`Time: $now()$`);
+}

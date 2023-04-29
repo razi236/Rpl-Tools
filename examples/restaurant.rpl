@@ -67,7 +67,9 @@ class Restaurant implements Restaurant
         await f1?;                                                      // Wait until the guest sit properly and select the food, during wait other orders (tasks ready to execute) can be dealt.
         deal = f1.get;                                                  // The guest has selected the food
         f2 = !cook(kitchen,deal) after dl 25;                           // Request the kitchen to cook the selected food within 25 times unit.
-        f3 = !serve(dinning_room) after f2 dl 5;                        // When the food will be ready a request will be sent to dinning_room to serve the food to the guests, while during the cooking process other orders can be handled
+        await f2?;
+        f3 = !serve(dinning_room) after dl 5;                        // When the food will be ready a request will be sent to dinning_room to serve the food to the guests, while during the cooking process other orders can be handled
+
         await f3?;                                                      // Wait until the food is served, during wait other orders can be dealt
     }
 }
