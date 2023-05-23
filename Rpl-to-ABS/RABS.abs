@@ -1,1 +1,438 @@
+module ABS.ResourceManager;
+import * from ABS.StdLib;
+export *;
+data Quality = Efficiency(Int) | Pathologist | BioTechnician | ProcessingMachine | EmbeddingMachine | StainingMachine | Receptionist | VanDriver | DeliveryVan | HeadWaiter | RunnerWaiter | Cook | CookAssistant;
 
+// Resource Management
+// Translation fetches resources from the database and store them in a resource map in the ABS program.
+// The following code helps to add, acquire and release the resources.
+
+data Availability = Free | Busy;
+
+interface ResourceManager {
+    List<Int> addRes(List<Set<Quality>> newResources);
+    List<Int> holdRes(List<Set<Quality>> wantedResources);
+    Unit releaseRes(List<Int> ids);
+    Unit print();
+}
+
+class ResourceManager implements ResourceManager {
+    Map<Int, Pair<Availability, Set<Quality>>> resources = map[];
+    Int resource_counter = 0;
+
+    Unit print() {
+        println(toString(resources));
+    }
+    List<Int> addRes(List<Set<Quality>> newResources) {
+        List<Int> result = list[];
+        foreach (r in newResources) {
+            resource_counter = resource_counter + 1;
+            resources = insert(resources, Pair(resource_counter, Pair(Free, r)));
+            result = Cons(resource_counter, result);
+        }
+        //println(toString(resources));
+        return result;
+    }
+
+    List<Int> holdRes(List<Set<Quality>> wantedResources) {
+        List<Int> result = list[];
+        Map<Int, Pair<Availability, Set<Quality>>> lr = this.resources;
+        while (result == Nil) {
+            foreach (q in wantedResources) {
+                Bool found = False;
+                foreach (entry in entries(lr)) {
+                    if (!found
+                        && fst(snd(entry)) == Free
+                        && isSubset(q, snd(snd(entry))))
+                    {
+                        found = True;
+                        result = Cons(fst(entry), result);
+                        lr = put(lr, fst(entry), Pair(Busy, snd(snd(entry))));
+                    }
+                }
+            }
+            if (length(result) != length(wantedResources)) {
+                // we did not find all needed resources
+                println(`hold retrying: Resources = $this.resources$ We want $wantedResources$`);
+                result = Nil;
+                lr = this.resources;
+                await this.resources != lr;
+                lr = this.resources;
+            } else {
+                // we're happy
+                /*
+                println("***********************************************");
+                println("We have acquired all the requested resources :)");
+                println("***********************************************");
+                */
+                this.resources = lr;
+            }
+        }
+
+        //println(toString(this.resources));
+        return result;
+    }
+
+    Unit releaseRes(List<Int> ids) {
+        Set<Int> all_ids = keys(resources);
+        foreach (id in ids) {
+            if (contains(all_ids, id)) {
+                Pair<Availability, Set<Quality>> entry = lookupUnsafe(resources, id);
+                resources = put(resources, id, Pair(Free, snd(entry)));
+            }
+        }
+        /*
+        println("***********************************************");
+        println("We have released all the acquired resources :)");
+        println("***********************************************");
+        */
+
+        //println(toString(this.resources));
+    }
+}
+
+// ABS does not support disjunction between future return tests (await f1? || await f2?)
+// The following code is a syntactic sugar for the disjunction between the return tests.
+// The code is not generic, supports only futures of integer type (Fut<Int>).
+
+interface AwaitFut
+{
+    Unit awaitFut(List<Fut<Int>> fut);
+    Bool checkFut();
+}
+class AwaitFut implements AwaitFut
+{
+    Bool resolved = False;
+    Unit awaitFut(List<Fut<Int>> fut)
+    {
+        try {
+            if(!isEmpty(fut)){
+               foreach(f in fut)
+               {
+                   await f?;
+               }
+               resolved = True;
+               println("Future Resolved:)");
+            }
+        } catch {
+            NullPointerException  => println(`Future is not initialized`);
+        }
+    }
+    Bool checkFut()
+    {
+        return resolved;
+    }
+}
+module Pathology_Workflow;
+import * from ABS.ResourceManager;
+
+import * from ABS.StdLib;
+
+data Case = Case(Int case_ID, Int sub_ID, String case_Type, Int complexity, Int priority, String patho_team, Int no_of_containers);
+
+interface Lists {
+  Unit setProcessingList(ResourceManager rm,List<Case> l);
+  List<Case> checkProcessingList(ResourceManager rm);
+  Case getProcessingList(ResourceManager rm);
+  Unit setBlockList(ResourceManager rm,List<Case> l);
+  List<Case> checkBlockList(ResourceManager rm);
+  Case getBlockList(ResourceManager rm);}
+
+class Lists implements Lists {
+  List<Case> processingTray = list(Nil);
+  List<Case> blockTray = list(Nil);
+  Unit setProcessingList(ResourceManager rm,List<Case> l){
+    this.processingTray = concatenate(this.processingTray, l);
+  }
+  List<Case> checkProcessingList(ResourceManager rm){
+    try {
+    Duration d = deadline();
+    Rat r = durationValue(d);
+    assert r > 0;
+    } catch {
+    AssertionFailException => println(`The method "checkProcessingList" have missed the deadline.`);
+    }
+    return this.processingTray;
+  }
+  Unit setBlockList(ResourceManager rm,List<Case> l){
+    this.blockTray = concatenate(this.blockTray, l);
+  }
+  List<Case> checkBlockList(ResourceManager rm){
+    try {
+    Duration d = deadline();
+    Rat r = durationValue(d);
+    assert r > 0;
+    } catch {
+    AssertionFailException => println(`The method "checkBlockList" have missed the deadline.`);
+    }
+    return this.blockTray;
+  }
+  Case getProcessingList(ResourceManager rm){
+    Case c = head(this.processingTray);this.processingTray = tail(this.processingTray);try {
+    Duration d = deadline();
+    Rat r = durationValue(d);
+    assert r > 0;
+    } catch {
+    AssertionFailException => println(`The method "getProcessingList" have missed the deadline.`);
+    }
+    return c;
+  }
+  Case getBlockList(ResourceManager rm){
+    Case c = head(this.blockTray);this.blockTray = tail(this.blockTray);try {
+    Duration d = deadline();
+    Rat r = durationValue(d);
+    assert r > 0;
+    } catch {
+    AssertionFailException => println(`The method "getBlockList" have missed the deadline.`);
+    }
+    return c;
+  }
+  }
+
+interface Pathology {
+  Unit start(ResourceManager rm,Lists l, List<Case> cl);
+  Unit register_case(ResourceManager rm,Case c);
+  List<Case> get_case_list(ResourceManager rm);}
+
+class Pathology implements Pathology {
+  List<Case> case_list = list(Nil);
+  Unit start(ResourceManager rm,Lists l, List<Case> cl){
+    Grossing g = new Grossing();
+    Processing p = new Processing();
+    Embedding e = new Embedding();
+    Sectioning s = new Sectioning();
+    Staining st = new Staining();
+    MicroscopicAnalysis ma = new MicroscopicAnalysis();
+    {
+      ABS.StdLib.List<Pathology_Workflow.Case> tmp1770453310 = cl;
+      while (! isEmpty(tmp1770453310)) {
+        Pathology_Workflow.Case x = head(tmp1770453310);
+        tmp1770453310 = tail(tmp1770453310);
+        {
+          [Deadline: Duration(5)]          this.register_case(rm,x);
+          Fut<Unit> f;
+          [Deadline: Duration(5)]          f = g!gross(rm,l, x);
+          await f?;
+          Fut<List<Case>> f1;
+          List<Case> l1 = list(Nil);
+          [Deadline: Duration(5)]          f1 = l!checkProcessingList(rm);
+          l1 = f1.get;
+          println(toString(l1));
+          if ( ( length(l1) >= 3 ) ){
+            Int i = 0;
+            List<Case> l2 = list(Nil);
+            while (( i < 3 )) {
+              Fut<Case> f2;
+              [Deadline: Duration(5)]              f2 = l!getProcessingList(rm);
+              Case c = f2.get;
+              l2 = appendright(l2, c);
+              i = ( i + 1 );
+            }
+            Fut<Unit> f2;
+            [Deadline: Duration(5)]            f2 = p!process(rm,l, l2);
+            await f2?;
+            Fut<List<Case>> f3;
+            List<Case> l3 = list(Nil);
+            [Deadline: Duration(5)]            f3 = l!checkBlockList(rm);
+            l3 = f3.get;
+            println(toString(l3));
+            {
+              ABS.StdLib.List<Pathology_Workflow.Case> tmp605472344 = l3;
+              while (! isEmpty(tmp605472344)) {
+                Pathology_Workflow.Case y = head(tmp605472344);
+                tmp605472344 = tail(tmp605472344);
+                {
+                  Fut<Unit> f4;
+                  [Deadline: Duration(5)]                  f4 = e!embed(rm,l, y);
+                  await f4?;
+                  [Deadline: Duration(5)]                  f4 = s!section(rm,l, y);
+                  await f4?;
+                  [Deadline: Duration(5)]                  f4 = st!stain(rm,l, y);
+                  await f4?;
+                  [Deadline: Duration(5)]                  f4 = ma!analyse(rm,l, y);
+                  await f4?;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  Unit register_case(ResourceManager rm,Case c){
+    if ( isEmpty(this.case_list) ){
+      this.case_list = appendright(this.case_list, c);
+    } else {
+      Int i = 0;
+      List<Case> left = list(Nil);
+      List<Case> right = list(Nil);
+      List<Case> mid = list(Nil);
+      Bool flag = True;
+      while (( i < length(this.case_list) )) {
+        if ( ( priority(nth(this.case_list, i)) <= priority(c) ) ){
+          left = appendright(left, nth(this.case_list, i));
+        } else {
+          while (( i < length(this.case_list) )) {
+            right = appendright(right, nth(this.case_list, i));
+            i = ( i + 1 );
+          }
+          mid = appendright(mid, c);
+          this.case_list = concatenate(left, concatenate(mid, right));
+          flag = False;
+        }
+        i = ( i + 1 );
+      }
+      if ( ( flag == True ) ){
+        this.case_list = appendright(left, c);
+      }
+    }
+  }
+  List<Case> get_case_list(ResourceManager rm){
+    try {
+    Duration d = deadline();
+    Rat r = durationValue(d);
+    assert r > 0;
+    } catch {
+    AssertionFailException => println(`The method "get_case_list" have missed the deadline.`);
+    }
+    return this.case_list;
+  }
+  }
+
+interface Grossing {
+  Unit gross(ResourceManager rm,Lists l, Case c);}
+
+class Grossing implements Grossing {
+  List<Case> tray = list(Nil);
+  Unit gross(ResourceManager rm,Lists l, Case c){
+    Int i = 1;
+    this.tray = Nil;
+    List<Int> rid = list(Nil);
+    rid = await rm!holdRes(list[set[BioTechnician, Efficiency( 2 )]]);
+    Rat time = ( random(10) / complexity(c) );
+    duration(truncate(time), truncate(time));
+    this.tray = appendright(this.tray, c);
+    while (( i < no_of_containers(c) )) {
+      Case c1 = c;
+      i = ( i + 1 );
+      this.tray = appendright(this.tray, c1);
+    }
+    await rm!releaseRes(rid);
+    Fut<Unit> f;
+    [Deadline: Duration(5)]    f = l!setProcessingList(rm,this.tray);
+    f.get;
+  }
+  }
+
+interface Processing {
+  Unit process(ResourceManager rm,Lists l, List<Case> c);}
+
+class Processing implements Processing {
+  
+  Unit process(ResourceManager rm,Lists l, List<Case> cl){
+    List<Int> rid = list(Nil);
+    rid = await rm!holdRes(list[set[ProcessingMachine, Efficiency( 10 )]]);
+    duration(50, 50);
+    await rm!releaseRes(rid);
+    Fut<Unit> f;
+    [Deadline: Duration(5)]    f = l!setBlockList(rm,cl);
+    f.get;
+  }
+  }
+
+interface Embedding {
+  Unit embed(ResourceManager rm,Lists l, Case c);}
+
+class Embedding implements Embedding {
+  
+  Unit embed(ResourceManager rm,Lists l, Case c){
+    List<Int> rid = list(Nil);
+    rid = await rm!holdRes(list[set[BioTechnician, Efficiency( 2 )]]);
+    Rat time = ( random(10) / complexity(c) );
+    duration(truncate(time), truncate(time));
+    await rm!releaseRes(rid);
+  }
+  }
+
+interface Sectioning {
+  Unit section(ResourceManager rm,Lists l, Case c);}
+
+class Sectioning implements Sectioning {
+  
+  Unit section(ResourceManager rm,Lists l, Case c){
+    List<Int> rid = list(Nil);
+    rid = await rm!holdRes(list[set[BioTechnician, Efficiency( 2 )]]);
+    Rat time = ( random(10) / complexity(c) );
+    duration(truncate(time), truncate(time));
+    await rm!releaseRes(rid);
+  }
+  }
+
+interface Staining {
+  Unit stain(ResourceManager rm,Lists l, Case c);}
+
+class Staining implements Staining {
+  
+  Unit stain(ResourceManager rm,Lists l, Case c){
+    List<Int> rid = list(Nil);
+    rid = await rm!holdRes(list[set[BioTechnician, Efficiency( 2 )]]);
+    Rat time = ( random(10) / complexity(c) );
+    duration(truncate(time), truncate(time));
+    await rm!releaseRes(rid);
+  }
+  }
+
+interface MicroscopicAnalysis {
+  Unit analyse(ResourceManager rm,Lists l, Case c);}
+
+class MicroscopicAnalysis implements MicroscopicAnalysis {
+  
+  Unit analyse(ResourceManager rm,Lists l, Case c){
+    List<Int> rid = list(Nil);
+    rid = await rm!holdRes(list[set[Pathologist, Efficiency( 2 )]]);
+    Rat time = ( random(10) / complexity(c) );
+    duration(truncate(time), truncate(time));
+    await rm!releaseRes(rid);
+  }
+  }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+{
+  ResourceManager rm = new ResourceManager();
+  await rm!addRes(list[set[Pathologist, Efficiency(3)], set[BioTechnician, Efficiency(5)], set[BioTechnician, Efficiency(3)], set[BioTechnician, Efficiency(10)], set[VanDriver, Efficiency(5)], set[DeliveryVan, Efficiency(1500)], set[BioTechnician, Efficiency(2)], set[BioTechnician, Efficiency(2)], set[BioTechnician, Efficiency(2)], set[BioTechnician, Efficiency(2)], set[ProcessingMachine, Efficiency(10)], set[ProcessingMachine, Efficiency(10)], set[StainingMachine, Efficiency(5)], set[StainingMachine, Efficiency(5)], set[Pathologist, Efficiency(2)], set[HeadWaiter, Efficiency(2)], set[RunnerWaiter, Efficiency(1)], set[RunnerWaiter, Efficiency(1)], set[Cook, Efficiency(5)], set[CookAssistant, Efficiency(1)], set[CookAssistant, Efficiency(1)], set[CookAssistant, Efficiency(1)], set[Cook, Efficiency(3)]]);
+  Case c = Case( 123, 0, "Blood Sample", 2, 3, "Gyno", 1 );
+  Case c1 = Case( 345, 0, "Blood Sample", 3, 3, "Gyno", 1 );
+  Case c2 = Case( 678, 0, "Blood Sample", 4, 2, "Gyno", 1 );
+  Case c3 = Case( 345, 0, "Blood Sample", 3, 3, "Gyno", 1 );
+  Case c4 = Case( 678, 0, "Blood Sample", 4, 2, "Gyno", 1 );
+  Case c5 = Case( 123, 0, "Blood Sample", 2, 3, "Gyno", 1 );
+  Case c6 = Case( 345, 0, "Blood Sample", 3, 3, "Gyno", 1 );
+  Case c7 = Case( 678, 0, "Blood Sample", 4, 2, "Gyno", 1 );
+  Case c8 = Case( 123, 0, "Blood Sample", 2, 3, "Gyno", 1 );
+  Case c9 = Case( 345, 0, "Blood Sample", 3, 3, "Gyno", 1 );
+  Case c10 = Case( 678, 0, "Blood Sample", 4, 2, "Gyno", 1 );
+  Case c11 = Case( 123, 0, "Blood Sample", 2, 3, "Gyno", 1 );
+  Case c12 = Case( 345, 0, "Blood Sample", 3, 3, "Gyno", 1 );
+  Case c13 = Case( 678, 0, "Blood Sample", 4, 2, "Gyno", 1 );
+  Pathology p = new Pathology();
+  Lists l = new Lists();
+  List<Case> cases = list[c, c1, c2, c3, c4, c5];
+  Fut<Unit> f;
+  [Deadline: Duration(500)]  f = p!start(rm,l, cases);
+  await f?;
+  println(( ( "Time: " + toString(now()) ) + "" ));
+}

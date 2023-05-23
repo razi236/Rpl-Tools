@@ -4,7 +4,7 @@ module Pathology_Workflow;
 // CITO => 1
 // Pakkeforløp => 2
 // Regular => 3
-
+//
 data Case = Case(Int case_ID, Int sub_ID, String case_Type, Int complexity, Int priority, String patho_team, Int no_of_containers);
 
 interface Lists
