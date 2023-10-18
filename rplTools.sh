@@ -4,7 +4,6 @@ echo "*          Welcome to RplTools         *"
 echo "****************************************"
 echo "Press 1 for Simulation"
 echo "Press 2 for Cost Analysis"
-echo "Press 3 for RPL to ABS translation"
 read option
 if [[ "$OSTYPE" == "darwin"* ]]; then
     {
@@ -41,17 +40,6 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
       end=`echo $(($(gdate +%s%N)/1000000))`
       echo Execution time was `expr $end - $start` mili seconds.
       grep -o '\bmax\b' CostEquations.txt | wc -l
-    }
-    # shellcheck disable=SC1131
-    elif [ $option = "3" ]
-    then
-    {
-      echo "Please enter the filename:"
-      read file
-      start=`echo $(($(gdate +%s%N)/1000000))`
-      frontend/bin/absc -t ./examples/$file
-      end=`echo $(($(gdate +%s%N)/1000000))`
-      echo Execution time was `expr $end - $start` mili seconds.
     }
     else
     {
@@ -90,18 +78,7 @@ else
         echo Execution time was `expr $end - $start` seconds.
         grep -o '\bmax\b' CostEquations.txt | wc -l
     }
-    # shellcheck disable=SC1131
-    elif [ $option = "3" ]
-    then
-    {
-        echo "Please enter the filename:"
-        read file
-        #start=`echo $($(date +%s))`
-        start=`date +%s`
-        frontend/bin/absc -t ./examples/$file
-        end=`date +%s`
-        echo Execution time was `expr $end - $start` seconds.
-    }
+    
     else
     {
         echo "Wrong selection"
